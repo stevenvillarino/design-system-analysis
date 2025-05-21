@@ -1,0 +1,172 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  margin: 0;
+  padding: 10px 20px;
+  background-color: #f4f6f8;
+  color: #333;
+  min-width: 350px;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 340px;
+  padding: 18px 12px 12px 12px;
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+h1 {
+  font-size: 1.2em;
+  color: #2c3e50;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+#results {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 12px;
+  width: 100%;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  min-height: 100px;
+}
+
+#results p {
+  margin: 0 0 8px 0;
+  line-height: 1.6;
+}
+
+#results strong {
+  color: #3498db;
+}
+
+#results h2 {
+  font-size: 1.1em;
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #2980b9;
+  border-bottom: 1px solid #ecf0f1;
+  padding-bottom: 5px;
+}
+
+button#analyzeBtn {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 1em;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  width: auto;
+  align-self: center;
+}
+
+button#analyzeBtn:hover {
+  background-color: #2980b9;
+}
+
+/* Styling for different sections that will be added later */
+.section {
+  margin-bottom: 18px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.section h3 {
+  font-size: 1em;
+  color: #7f8c8d;
+  margin-bottom: 8px;
+}
+
+.list-item {
+  background-color: #ecf0f1;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 2px;
+  font-size: 0.9em;
+}
+
+/* Colored dots for metrics */
+.metric-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.metric-dot.mui { background: #1976d2; }
+.metric-dot.custom { background: #d32f2f; }
+
+/* Info icon for tooltips */
+.info-icon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #eee;
+  color: #555;
+  text-align: center;
+  font-size: 12px;
+  line-height: 14px;
+  margin-left: 4px;
+  cursor: pointer;
+  border: 1px solid #ccc;
+}
+
+/* Tooltip styling */
+.tooltip {
+  display: none;
+  position: absolute;
+  background: #333;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 10000;
+  max-width: 220px;
+}
+
+.info-icon:hover + .tooltip {
+  display: block;
+}
+
+/* Loading spinner */
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #1976d2;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  animation: spin 1s linear infinite;
+  margin: 18px auto;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive and clean */
+.toggle-section {
+  margin-bottom: 12px;
+}
+button {
+  margin-top: 8px;
+  padding: 7px 18px;
+  font-size: 1em;
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+button:hover {
+  background: #1565c0;
+}
+

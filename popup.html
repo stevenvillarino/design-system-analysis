@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Design System Analyzer</title>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Design System Analysis</h1>
+    <div id="results">
+      <div id="spinner" class="spinner" style="display:none;"></div>
+      <h2 class="section">Analysis Results</h2>
+      <p>Loading analysis...</p>
+    </div>
+    <div class="section" id="metricsSection">
+      <h3>Component Metrics</h3>
+      <div>
+        <span class="metric-dot mui"></span> MUI Components
+      </div>
+      <div>
+        <span class="metric-dot custom"></span> Custom Components
+        <span class="info-icon" tabindex="0">i</span>
+        <span class="tooltip">Custom components are likely React components (PascalCase class) that are not MUI and not common utility/layout elements.</span>
+      </div>
+    </div>
+    <div class="toggle-section">
+      <label><input type="checkbox" id="muiOverlayToggle" checked> Show MUI Overlays</label><br>
+      <label><input type="checkbox" id="customOverlayToggle" checked> Show Custom Overlays</label>
+    </div>
+    <button id="analyzeBtn">Analyze Page</button> 
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
+
