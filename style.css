@@ -170,3 +170,28 @@ button:hover {
   background: #1565c0;
 }
 
+/* Mermaid diagram styling */
+#componentFlow {
+  width: 100%;
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  margin-bottom: 16px;
+}
+
+.mermaid {
+  width: 100%;
+  max-height: 300px;
+  overflow: auto;
+  background: #fff;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+/* Ensure diagram is readable */
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+

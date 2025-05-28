@@ -107,3 +107,26 @@ Would you like me to run these commands for you to diagnose and clean up the unt
 
 ---
 
+_**User**_
+
+can you add the https://github.com/microsoft/playwright-mcp MCP?
+
+---
+
+_**Assistant**_
+
+To add the MCP (Model Context Protocol) from the Playwright MCP project (https://github.com/microsoft/playwright-mcp) to your extension, you need to:
+
+1. Decide how you want to use MCP:
+   - If you want to use it as a Node.js library, you need a Node.js project structure (with package.json).
+   - If you want to use it for browser-side code, you may need to bundle it or use only the protocol definitions.
+
+2. Since your project is a browser extension and does not currently have a Node.js setup, you should:
+   - Initialize npm in your project folder.
+   - Install the Playwright MCP package.
+   - Use the MCP protocol/types in your code as needed.
+
+Would you like me to initialize npm and install the Playwright MCP package for you? This will add a package.json and node_modules (which you should keep in .gitignore). Let me know if you want to proceed!
+
+---
+

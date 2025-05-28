@@ -59,11 +59,13 @@ document.addEventListener("DOMContentLoaded", () => {
             resultsDiv.innerHTML = `<p>Error: ${chrome.runtime.lastError.message}</p><p>Please ensure the page is fully loaded and try again. You might need to refresh the page if it was open before the extension was installed/enabled.</p>`;
             console.error(chrome.runtime.lastError.message);
             return;
-          }
-          if (response) {
-            let htmlContent = "<h2 class=\"section\">Analysis Results</h2>";
-            if (response.muiDetected) {
-              htmlContent += `<p><strong>MUI Detected:</strong> Yes</p>`;
+          }            if (response) {
+              // Update component hierarchy diagram
+              updateComponentDiagram(response);
+              
+              let htmlContent = "<h2 class=\"section\">Analysis Results</h2>";
+              if (response.muiDetected) {
+                htmlContent += `<p><strong>MUI Detected:</strong> Yes</p>`;
               htmlContent += `<p><strong>MUI Version:</strong> ${response.muiVersion || "Not specifically identified"}</p>`;
               
               if (response.muiComponentDetails && Object.keys(response.muiComponentDetails).length > 0) {
@@ -96,9 +98,41 @@ document.addEventListener("DOMContentLoaded", () => {
           if (muiOverlayToggle) muiOverlayToggle.checked = true;
           if (customOverlayToggle) customOverlayToggle.checked = true;
           sendOverlayToggle();
+
+          // Update component hierarchy diagram
+          updateComponentDiagram(response);
         }
       );
     });
+  }
+
+  // Function to update component hierarchy diagram
+  function updateComponentDiagram(response) {
+    if (!response || (!response.muiComponentDetails && !response.customComponentCount)) return;
+
+    let diagram = 'graph TD\nA[Page Root]';
+    
+    // Add MUI components
+    if (response.muiComponentDetails && Object.keys(response.muiComponentDetails).length > 0) {
+      diagram += '\nA --> B[MUI Components]';
+      Object.keys(response.muiComponentDetails).slice(0, 5).forEach((component, i) => {
+        const count = response.muiComponentDetails[component];
+        diagram += `\nB --> M${i}[${component} (${count})]`;
+      });
+    }
+
+    // Add custom components
+    if (response.customComponentCount > 0) {
+      diagram += '\nA --> C[Custom Components]';
+      diagram += `\nC --> C1[Custom UI (${response.customComponentCount})]`;
+    }
+
+    // Update the diagram
+    const diagramContainer = document.querySelector('.mermaid');
+    if (diagramContainer) {
+      diagramContainer.textContent = diagram;
+      mermaid.contentLoaded();
+    }
   }
 
   // Automatically request analysis when popup opens
