@@ -1,170 +1,284 @@
-// popup.js
-document.addEventListener("DOMContentLoaded", () => {
-  const analyzeBtn = document.getElementById("analyzeBtn");
-  const resultsDiv = document.getElementById("results");
-  const muiOverlayToggle = document.getElementById("muiOverlayToggle");
-  const customOverlayToggle = document.getElementById("customOverlayToggle");
-  const spinner = document.getElementById("spinner");
-  const metricsSection = document.getElementById("metricsSection");
+document.addEventListener("DOMContentLoaded", function() {
+  let currentTab = 'overview';
+  let analysisData = null;
+  let isAnalyzing = false;
 
-  // Helper to send overlay toggle message
-  function sendOverlayToggle() {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs.length === 0) return;
-      const activeTab = tabs[0];
-      chrome.tabs.sendMessage(
-        activeTab.id,
-        {
-          action: "toggleOverlays",
-          options: {
-            showMUI: muiOverlayToggle ? muiOverlayToggle.checked : true,
-            showCustom: customOverlayToggle ? customOverlayToggle.checked : true
-          }
+  // Initialize the popup
+  function init() {
+    setupEventListeners();
+    switchTab('overview');
+    requestAnalysis();
+  }
+
+  function setupEventListeners() {
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', function() {
+        requestAnalysis(true);
+      });
+    }
+
+    const toggleIds = ['muiOverlayToggle', 'customOverlayToggle', 'packageOverlayToggle', 'slideColorToggle'];
+    toggleIds.forEach(function(id) {
+      const toggle = document.getElementById(id);
+      if (toggle) {
+        toggle.addEventListener('change', function() {
+          setTimeout(sendOverlayToggle, 100);
+        });
+      }
+    });
+
+    document.querySelectorAll('.tab-button').forEach(function(button) {
+      button.addEventListener('click', function() {
+        switchTab(button.dataset.tab);
+      });
+    });
+
+    document.querySelectorAll('.stat-card').forEach(function(card) {
+      card.addEventListener('click', function() {
+        if (card.classList.contains('mui')) {
+          switchTab('components');
+        } else if (card.classList.contains('packages')) {
+          switchTab('packages');
+        } else {
+          switchTab('overview');
         }
-      );
+      });
     });
   }
 
-  // Function to show/hide spinner
-  function setSpinner(visible) {
-    if (spinner) spinner.style.display = visible ? "block" : "none";
+  function switchTab(tabName) {
+    document.querySelectorAll('.tab-button').forEach(function(btn) {
+      if (btn.dataset.tab === tabName) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
+    document.querySelectorAll('.tab-content').forEach(function(content) {
+      if (content.id === tabName + '-tab') {
+        content.classList.add('active');
+      } else {
+        content.classList.remove('active');
+      }
+    });
+
+    currentTab = tabName;
+    
+    if (analysisData) {
+      populateTabContent(tabName);
+    }
   }
 
-  // Function to show/hide metrics section
-  function setMetricsVisible(visible) {
-    if (metricsSection) metricsSection.style.display = visible ? "block" : "none";
-  }
+  function requestAnalysis(force) {
+    if (isAnalyzing && !force) return;
+    
+    isAnalyzing = true;
+    showLoading();
 
-  // Function to request analysis from content script
-  function requestAnalysis() {
-    setSpinner(true);
-    setMetricsVisible(false);
-    resultsDiv.innerHTML = '<div id="spinner" class="spinner"></div><h2 class="section">Analysis Results</h2><p>Analyzing page...</p>';
-    // Get the current active tab
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
       if (tabs.length === 0) {
-        setSpinner(false);
-        resultsDiv.innerHTML = "<p>Error: No active tab found.</p>";
+        handleAnalysisError(new Error('No active tab found'));
         return;
       }
-      const activeTab = tabs[0];
-      // Send a message to the content script in the active tab
-      chrome.tabs.sendMessage(
-        activeTab.id,
-        { action: "getMUIData" },
-        (response) => {
-          setSpinner(false);
-          setMetricsVisible(true);
-          if (chrome.runtime.lastError) {
-            resultsDiv.innerHTML = `<p>Error: ${chrome.runtime.lastError.message}</p><p>Please ensure the page is fully loaded and try again. You might need to refresh the page if it was open before the extension was installed/enabled.</p>`;
-            console.error(chrome.runtime.lastError.message);
-            return;
-          }            if (response) {
-              // Update component hierarchy diagram
-              updateComponentDiagram(response);
-              
-              let htmlContent = "<h2 class=\"section\">Analysis Results</h2>";
-              if (response.muiDetected) {
-                htmlContent += `<p><strong>MUI Detected:</strong> Yes</p>`;
-              htmlContent += `<p><strong>MUI Version:</strong> ${response.muiVersion || "Not specifically identified"}</p>`;
-              
-              if (response.muiComponentDetails && Object.keys(response.muiComponentDetails).length > 0) {
-                htmlContent += "<div class=\"section\"><h3>Detected MUI Components:</h3>";
-                htmlContent += "<ul class=\"component-list\">";
-                for (const component in response.muiComponentDetails) {
-                  htmlContent += `<li class=\"list-item\"><span class=\"metric-dot mui\"></span>${component}: ${response.muiComponentDetails[component]}</li>`;
-                }
-                htmlContent += "</ul>";
-                htmlContent += `<p><strong>Total MUI Components Found:</strong> <span class=\"metric-dot mui\"></span>${response.totalMuiComponents}</p>`;
-                htmlContent += `<p><strong>Custom Components Found:</strong> <span class=\"metric-dot custom\"></span>${response.customComponentCount}</p>`;
-                htmlContent += `<p><strong>Coverage Ratio:</strong> ${response.componentRatio}</p>`;
-                htmlContent += "</div>";
-              } else {
-                htmlContent += "<p>No specific MUI components identified (or analysis not yet implemented for them).</p>";
-                htmlContent += `<p><strong>Custom Components Found:</strong> <span class=\"metric-dot custom\"></span>${response.customComponentCount}</p>`;
-                htmlContent += `<p><strong>Coverage Ratio:</strong> ${response.componentRatio}</p>`;
-              }
 
-            } else {
-              htmlContent += "<p><strong>MUI Detected:</strong> No</p>";
-              htmlContent += `<p><strong>Custom Components Found:</strong> <span class=\"metric-dot custom\"></span>${response.customComponentCount}</p>`;
-              htmlContent += `<p><strong>Coverage Ratio:</strong> ${response.componentRatio}</p>`;
-            }
-            resultsDiv.innerHTML = htmlContent;
-          } else {
-            resultsDiv.innerHTML = "<p>No response from content script. Ensure the extension has permissions for this page and the page is loaded.</p>";
-          }
-          // After analysis, show overlays by default (sync with toggles)
-          if (muiOverlayToggle) muiOverlayToggle.checked = true;
-          if (customOverlayToggle) customOverlayToggle.checked = true;
-          sendOverlayToggle();
-
-          // Update component hierarchy diagram
-          updateComponentDiagram(response);
+      chrome.tabs.sendMessage(tabs[0].id, {action: "getMUIData"}, function(response) {
+        if (chrome.runtime.lastError) {
+          handleAnalysisError(new Error(chrome.runtime.lastError.message));
+        } else if (response) {
+          handleAnalysisComplete(response);
+        } else {
+          handleAnalysisError(new Error('No response from content script'));
         }
-      );
+        isAnalyzing = false;
+      });
     });
   }
 
-  // Function to update component hierarchy diagram
-  function updateComponentDiagram(response) {
-    if (!response || (!response.muiComponentDetails && !response.customComponentCount)) return;
+  function handleAnalysisComplete(data) {
+    analysisData = data;
+    hideLoading();
+    updateStatsCards(data);
+    updateCoverageBar(data);
+    populateTabContent(currentTab);
+    generateInsights(data);
+    sendOverlayToggle();
+  }
 
-    let diagram = 'graph TD\nA[Page Root]';
+  function handleAnalysisError(error) {
+    hideLoading();
+    console.error('Analysis failed:', error);
     
-    // Add MUI components
-    if (response.muiComponentDetails && Object.keys(response.muiComponentDetails).length > 0) {
-      diagram += '\nA --> B[MUI Components]';
-      Object.keys(response.muiComponentDetails).slice(0, 5).forEach((component, i) => {
-        const count = response.muiComponentDetails[component];
-        diagram += `\nB --> M${i}[${component} (${count})]`;
+    ['muiCount', 'customCount', 'packageCount'].forEach(function(id) {
+      const element = document.getElementById(id);
+      if (element) element.textContent = '!';
+    });
+
+    const insightCards = document.getElementById('insightCards');
+    if (insightCards) {
+      insightCards.innerHTML = '<div class="insight-card negative">Analysis failed. Try refreshing the page.</div>';
+    }
+  }
+
+  function showLoading() {
+    document.getElementById('loadingContainer').style.display = 'flex';
+    document.getElementById('mainContent').style.display = 'none';
+  }
+
+  function hideLoading() {
+    document.getElementById('loadingContainer').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+  }
+
+  function updateStatsCards(data) {
+    animateCount('muiCount', data.totalMuiComponents || 0);
+    animateCount('customCount', data.customComponentCount || 0);
+    animateCount('packageCount', data.detectedPackages || 0);
+  }
+
+  function animateCount(elementId, target) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    const current = parseInt(element.textContent) || 0;
+    if (current !== target) {
+      element.textContent = target;
+    }
+  }
+
+  function updateCoverageBar(data) {
+    const total = (data.totalMuiComponents || 0) + (data.customComponentCount || 0);
+    
+    if (total > 0) {
+      const muiPercent = Math.round((data.totalMuiComponents / total) * 100);
+      const customPercent = 100 - muiPercent;
+      
+      setTimeout(function() {
+        const muiBar = document.getElementById('coverageBarMui');
+        const customBar = document.getElementById('coverageBarCustom');
+        const muiText = document.getElementById('muiPercentage');
+        const customText = document.getElementById('customPercentage');
+        
+        if (muiBar) muiBar.style.width = muiPercent + '%';
+        if (customBar) customBar.style.width = customPercent + '%';
+        if (muiText) muiText.textContent = muiPercent + '%';
+        if (customText) customText.textContent = customPercent + '%';
+      }, 200);
+    }
+  }
+
+  function populateTabContent(tabName) {
+    if (!analysisData) return;
+
+    if (tabName === 'components') {
+      populateComponentsTab();
+    } else if (tabName === 'packages') {
+      populatePackagesTab();
+    }
+  }
+
+  function populateComponentsTab() {
+    const grid = document.getElementById('componentGrid');
+    if (!grid || !analysisData.muiComponentDetails) return;
+
+    const components = Object.entries(analysisData.muiComponentDetails)
+      .sort(function(a, b) { return b[1] - a[1]; });
+
+    let html = '';
+    components.forEach(function(component) {
+      html += '<div class="component-card">' +
+        '<div class="card-header">' +
+          '<div class="card-title">' + component[0] + '</div>' +
+          '<div class="card-count">' + component[1] + '</div>' +
+        '</div>' +
+        '<div class="card-meta">' +
+          '<span class="card-source">MUI Component</span>' +
+        '</div>' +
+      '</div>';
+    });
+
+    grid.innerHTML = html;
+  }
+
+  function populatePackagesTab() {
+    const grid = document.getElementById('packageGrid');
+    if (!grid || !analysisData.packageDependencies) return;
+
+    let html = '';
+    analysisData.packageDependencies.forEach(function(pkg) {
+      html += '<div class="package-card">' +
+        '<div class="card-header">' +
+          '<div class="card-title">📦 ' + pkg.name + '</div>' +
+          '<div class="card-version">' + pkg.version + '</div>' +
+        '</div>' +
+        '<div class="card-meta">' +
+          '<span class="card-source">' + pkg.source + '</span>' +
+        '</div>' +
+      '</div>';
+    });
+
+    grid.innerHTML = html;
+  }
+
+  function generateInsights(data) {
+    const insights = [];
+    const total = (data.totalMuiComponents || 0) + (data.customComponentCount || 0);
+    
+    if (total === 0) {
+      insights.push({
+        type: 'warning',
+        message: 'No components detected. This might be a static page.'
       });
+    } else {
+      const muiPercent = Math.round((data.totalMuiComponents / total) * 100);
+      
+      if (muiPercent >= 80) {
+        insights.push({
+          type: 'positive',
+          message: 'Excellent design system adoption! ' + muiPercent + '% of components use MUI.'
+        });
+      } else if (muiPercent >= 50) {
+        insights.push({
+          type: 'warning',
+          message: 'Good progress (' + muiPercent + '%). Consider migrating more custom components.'
+        });
+      } else {
+        insights.push({
+          type: 'negative',
+          message: 'Low adoption (' + muiPercent + '%). Many opportunities to use MUI.'
+        });
+      }
     }
 
-    // Add custom components
-    if (response.customComponentCount > 0) {
-      diagram += '\nA --> C[Custom Components]';
-      diagram += `\nC --> C1[Custom UI (${response.customComponentCount})]`;
-    }
-
-    // Update the diagram
-    const diagramContainer = document.querySelector('.mermaid');
-    if (diagramContainer) {
-      diagramContainer.textContent = diagram;
-      mermaid.contentLoaded();
-    }
-  }
-
-  // Automatically request analysis when popup opens
-  requestAnalysis();
-
-  // Add event listener to the button if you want a manual trigger as well
-  if(analyzeBtn) {
-      analyzeBtn.addEventListener("click", () => {
-        requestAnalysis();
+    const insightCards = document.getElementById('insightCards');
+    if (insightCards) {
+      let html = '';
+      insights.forEach(function(insight) {
+        html += '<div class="insight-card ' + insight.type + '">' + insight.message + '</div>';
       });
+      insightCards.innerHTML = html;
+    }
   }
 
-  // Add event listeners for overlay toggles
-  if (muiOverlayToggle) {
-    muiOverlayToggle.addEventListener("change", sendOverlayToggle);
-  }
-  if (customOverlayToggle) {
-    customOverlayToggle.addEventListener("change", sendOverlayToggle);
+  function sendOverlayToggle() {
+    const options = {
+      showMUI: document.getElementById('muiOverlayToggle') ? document.getElementById('muiOverlayToggle').checked : true,
+      showCustom: document.getElementById('customOverlayToggle') ? document.getElementById('customOverlayToggle').checked : true,
+      showPackages: document.getElementById('packageOverlayToggle') ? document.getElementById('packageOverlayToggle').checked : true,
+      slideColor: document.getElementById('slideColorToggle') ? document.getElementById('slideColorToggle').checked : false
+    };
+
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+      if (tabs.length > 0) {
+        chrome.tabs.sendMessage(tabs[0].id, { 
+          action: "toggleOverlays", 
+          options: options 
+        });
+      }
+    });
   }
 
-  // Info icon tooltip (keyboard accessible)
-  document.addEventListener('focusin', (e) => {
-    if (e.target.classList && e.target.classList.contains('info-icon')) {
-      const tooltip = e.target.nextElementSibling;
-      if (tooltip) tooltip.style.display = 'block';
-    }
-  });
-  document.addEventListener('focusout', (e) => {
-    if (e.target.classList && e.target.classList.contains('info-icon')) {
-      const tooltip = e.target.nextElementSibling;
-      if (tooltip) tooltip.style.display = 'none';
-    }
-  });
+  // Start the application
+  init();
 });
-
