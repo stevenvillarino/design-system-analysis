@@ -80,18 +80,16 @@ body {
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
   padding: 0;
-  width: 300px;
-  height: 350px;
-  overflow: hidden;
+  width: 380px;
+  min-height: 400px;
+  overflow: auto;
 }
 
 /* App Container */
 .app {
-  width: 300px;
-  height: 350px;
-  max-height: 350px;
+  width: 380px;
+  min-height: 400px;
   background: var(--color-surface);
-  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -141,12 +139,21 @@ body {
 
 .refresh-btn:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+.refresh-btn:hover .refresh-icon svg {
   transform: rotate(180deg);
 }
 
 .refresh-icon {
-  font-size: var(--font-size-base);
-  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--transition-base);
+}
+
+.refresh-icon svg {
+  transition: transform var(--transition-base);
 }
 
 /* Loading State */
@@ -342,6 +349,22 @@ body {
   font-size: var(--font-size-xs);
   font-weight: 500;
   color: var(--color-text-secondary);
+}
+
+/* Section Descriptions */
+.section-description {
+  background: var(--color-background-secondary);
+  border-radius: var(--radius-base);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  border-left: 3px solid var(--color-primary);
+}
+
+.section-description p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
 }
 
 /* Tabs */
@@ -617,6 +640,12 @@ body {
   border-radius: var(--radius-sm);
   font-weight: 500;
   font-size: var(--font-size-xs);
+}
+
+/* Roku RDS specific styling */
+.package-card:has(.card-category:contains("Roku RDS")) {
+  border-left: 4px solid #663399;
+  background: linear-gradient(135deg, rgba(102, 51, 153, 0.05) 0%, var(--color-surface) 100%);
 }
 
 /* Scrollbar Styling */

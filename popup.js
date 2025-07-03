@@ -83,20 +83,55 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
-      chrome.tabs.sendMessage(tabs[0].id, {action: "getMUIData"}, function(response) {
+      const tab = tabs[0];
+      console.log('Attempting to analyze tab:', tab.url);
+
+      // Check if we can inject on this URL
+      if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:')) {
+        handleAnalysisError(new Error('Cannot analyze browser internal pages. Please navigate to a regular website.'));
+        return;
+      }
+
+      chrome.tabs.sendMessage(tab.id, {action: "getMUIData"}, function(response) {
         if (chrome.runtime.lastError) {
-          handleAnalysisError(new Error(chrome.runtime.lastError.message));
+          console.error('Content script error:', chrome.runtime.lastError.message);
+          // Try to inject the content script manually
+          chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['content.js']
+          }, function() {
+            if (chrome.runtime.lastError) {
+              handleAnalysisError(new Error('Cannot inject content script: ' + chrome.runtime.lastError.message));
+            } else {
+              // Wait a moment then try again
+              setTimeout(function() {
+                chrome.tabs.sendMessage(tab.id, {action: "getMUIData"}, function(response) {
+                  if (chrome.runtime.lastError) {
+                    handleAnalysisError(new Error('Content script still not responding: ' + chrome.runtime.lastError.message));
+                  } else if (response) {
+                    handleAnalysisComplete(response);
+                  } else {
+                    handleAnalysisError(new Error('No response from content script after injection'));
+                  }
+                  isAnalyzing = false;
+                });
+              }, 500);
+            }
+          });
         } else if (response) {
+          console.log('Analysis response received:', response);
           handleAnalysisComplete(response);
+          isAnalyzing = false;
         } else {
           handleAnalysisError(new Error('No response from content script'));
+          isAnalyzing = false;
         }
-        isAnalyzing = false;
       });
     });
   }
 
   function handleAnalysisComplete(data) {
+    console.log('Analysis data received:', data);
     analysisData = data;
     hideLoading();
     updateStatsCards(data);
@@ -180,10 +215,27 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function populateComponentsTab() {
     const grid = document.getElementById('componentGrid');
-    if (!grid || !analysisData.muiComponentDetails) return;
+    console.log('Populating components tab:', {
+      grid: !!grid,
+      muiComponentDetails: analysisData?.muiComponentDetails,
+      analysisData: analysisData
+    });
+    
+    if (!grid) {
+      console.error('Component grid element not found');
+      return;
+    }
+    
+    if (!analysisData || !analysisData.muiComponentDetails) {
+      console.log('No MUI component details available');
+      grid.innerHTML = '<div class="component-card"><div class="card-header"><div class="card-title">No components detected</div></div></div>';
+      return;
+    }
 
     const components = Object.entries(analysisData.muiComponentDetails)
       .sort(function(a, b) { return b[1] - a[1]; });
+
+    console.log('Components found:', components);
 
     let html = '';
     components.forEach(function(component) {
@@ -203,22 +255,58 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function populatePackagesTab() {
     const grid = document.getElementById('packageGrid');
-    if (!grid || !analysisData.packageDependencies) return;
+    console.log('Populating packages tab:', {
+      grid: !!grid,
+      packageDependencies: analysisData?.packageDependencies,
+      analysisData: analysisData
+    });
+    
+    if (!grid) {
+      console.error('Package grid element not found');
+      return;
+    }
+    
+    if (!analysisData || !analysisData.packageDependencies || analysisData.packageDependencies.length === 0) {
+      console.log('No package dependencies available');
+      grid.innerHTML = '<div class="package-card"><div class="card-header"><div class="card-title">No packages detected</div></div></div>';
+      return;
+    }
+
+    console.log('Packages found:', analysisData.packageDependencies);
 
     let html = '';
     analysisData.packageDependencies.forEach(function(pkg) {
+      const icon = getCategoryIcon(pkg.category);
       html += '<div class="package-card">' +
         '<div class="card-header">' +
-          '<div class="card-title">📦 ' + pkg.name + '</div>' +
+          '<div class="card-title">' + icon + ' ' + pkg.name + '</div>' +
           '<div class="card-version">' + pkg.version + '</div>' +
         '</div>' +
         '<div class="card-meta">' +
           '<span class="card-source">' + pkg.source + '</span>' +
+          (pkg.category ? '<span class="card-category">' + pkg.category + '</span>' : '') +
         '</div>' +
       '</div>';
     });
 
     grid.innerHTML = html;
+  }
+
+  function getCategoryIcon(category) {
+    const icons = {
+      'Roku RDS': '🎵',
+      'MUI Core': '🔵',
+      'MUI Styling': '🎨',
+      'MUI Icons': '🔤',
+      'MUI Fonts': '🔤',
+      'MUI X': '⚡',
+      'MUI Labs': '🧪',
+      'Development Tools': '🛠️',
+      'Framework': '⚛️',
+      'CSS Framework': '💎',
+      'Library': '📚'
+    };
+    return icons[category] || '📦';
   }
 
   function generateInsights(data) {

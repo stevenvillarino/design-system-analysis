@@ -13,9 +13,16 @@ function detectAllPackages() {
   
   const packages = new Map();
   
-  // Enhanced script tag checking with focus on MUI ecosystem
+  // Enhanced script tag checking with focus on MUI and Roku Design System
   const scripts = Array.from(document.querySelectorAll('script[src]')).slice(0, 100);
   const muiEcosystemPatterns = [
+    // Roku Design System packages
+    { pattern: /@roku-web-ui\/rds-components(?:@|\/)([\d\w\.-]+)/, name: '@roku-web-ui/rds-components', version: 1, category: 'Roku RDS' },
+    { pattern: /@roku-web-ui\/rds-theme(?:@|\/)([\d\w\.-]+)/, name: '@roku-web-ui/rds-theme', version: 1, category: 'Roku RDS' },
+    { pattern: /@roku-web-ui\/rds-icons(?:@|\/)([\d\w\.-]+)/, name: '@roku-web-ui/rds-icons', version: 1, category: 'Roku RDS' },
+    { pattern: /@roku-web-ui\/rds-fonts(?:@|\/)([\d\w\.-]+)/, name: '@roku-web-ui/rds-fonts', version: 1, category: 'Roku RDS' },
+    { pattern: /@roku-web-ui\/rds-storybook(?:@|\/)([\d\w\.-]+)/, name: '@roku-web-ui/rds-storybook', version: 1, category: 'Roku RDS' },
+    
     // MUI Core packages
     { pattern: /@mui\/material(?:@|\/)([\d\w\.-]+)/, name: '@mui/material', version: 1, category: 'MUI Core' },
     { pattern: /@mui\/system(?:@|\/)([\d\w\.-]+)/, name: '@mui/system', version: 1, category: 'MUI Core' },
