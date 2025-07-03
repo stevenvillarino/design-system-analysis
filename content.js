@@ -237,55 +237,39 @@ function detectMUI() {
   let muiVersion = null;
   let muiDetected = false;
 
-  // Try to find MUI version from a global object (common in some setups)
+  // Enhanced detection logic
+  const muiSelectors = [
+    '[class*="MuiButton-"]', 
+    '[class*="MuiInput-"]',
+    '[class*="MuiTypography-"]',
+    '[class*="css-"][id*="mui-"]', // MUI v5+ styled components
+    'script[src*="@mui/"]', 
+    'link[href*="@mui/"]',
+    '[data-mui-internal-clone-element]' // A less common but reliable indicator
+  ];
+
   if (window.MUI && window.MUI.version) {
     muiVersion = window.MUI.version;
     muiDetected = true;
-  } else if (window.mui && window.mui.version) { // older versions might use lowercase mui
+  } else if (window.mui && window.mui.version) {
     muiVersion = window.mui.version;
     muiDetected = true;
-  } else {
-    // Look for MUI specific class names or elements as a fallback or primary detection
-    const muiSelectors = [
-      '[class*="MuiButton-"]', 
-      '[class*="MuiInput-"]',
-      '[class*="MuiTypography-"]',
-      '[class*="css-"][id*="mui-"]', // More generic but often used by MUI v5+ styled components
-      'script[src*="@mui/"]', // Check for MUI script tags
-      'link[href*="@mui/"]' // Check for MUI CSS links
-    ];
+  } else if (document.querySelector(muiSelectors.join(','))) {
+    muiDetected = true;
+  }
 
-    for (const selector of muiSelectors) {
-      if (document.querySelector(selector)) {
-        muiDetected = true;
+  if (muiDetected && !muiVersion) {
+    const scripts = Array.from(document.querySelectorAll('script[src]'));
+    for (const script of scripts) {
+      const src = script.src;
+      const muiMatch = src.match(/@mui\/[^\/]+(?:\/([^\/]+))?\/([^\/]+)\/(?:umd\/|esm\/)?([^\.\/]+)/i) || src.match(/material-ui(?:@|\/)([\d\.]+)/i);
+      if (muiMatch) {
+        muiVersion = muiMatch[1] || muiMatch[2] || muiMatch[3] || "version not found";
         break;
       }
     }
-
-    // If MUI is detected but version not found via global, try to infer from script tags
-    if (muiDetected && !muiVersion) {
-      const scripts = Array.from(document.querySelectorAll('script[src]'));
-      for (const script of scripts) {
-        const src = script.src;
-        const muiMatch = src.match(/@mui\/[^\/]+(?:\/([^\/]+))?\/([^\/]+)\/(?:umd\/|esm\/)?([^\.\/]+)/i) || src.match(/material-ui(?:@|\/)([\d\.]+)/i);
-        if (muiMatch) {
-          muiVersion = muiMatch[1] || muiMatch[2] || muiMatch[3]; // Attempt to grab version from different regex groups
-          if (muiVersion && !muiVersion.match(/^\d+\.\d+/)) {
-             const specificVersionMatch = src.match(/@mui\/(?:material|system|utils|core)(?:\/|@)([\d\w\.-]+)/i);
-             if (specificVersionMatch && specificVersionMatch[1]) {
-                muiVersion = specificVersionMatch[1];
-             } else {
-                muiVersion = "Version unclear from scripts";
-             }
-          } else if (muiVersion && muiVersion.includes(".js")) {
-             muiVersion = muiVersion.split(".js")[0];
-          }
-          break;
-        }
-      }
-       if (!muiVersion && muiDetected) {
-         muiVersion = "Detected, version not identified";
-       }
+    if (!muiVersion) {
+      muiVersion = "Detected, but version not identified";
     }
   }
 
@@ -295,6 +279,53 @@ function detectMUI() {
 // Optimized MUI component analysis with performance improvements
 let muiAnalysisCache = null;
 let muiCacheTime = 0;
+
+const muiComponentPatterns = {
+    "Accordion": "MuiAccordion-root",
+    "Alert": "MuiAlert-root",
+    "AppBar": "MuiAppBar-root",
+    "Autocomplete": "MuiAutocomplete-root",
+    "Avatar": "MuiAvatar-root",
+    "Badge": "MuiBadge-root",
+    "BottomNavigation": "MuiBottomNavigation-root",
+    "Breadcrumbs": "MuiBreadcrumbs-root",
+    "Button": "MuiButton-root",
+    "ButtonGroup": "MuiButtonGroup-root",
+    "Card": "MuiCard-root",
+    "Checkbox": "MuiCheckbox-root",
+    "Chip": "MuiChip-root",
+    "CircularProgress": "MuiCircularProgress-root",
+    "Dialog": "MuiDialog-root",
+    "Divider": "MuiDivider-root",
+    "Drawer": "MuiDrawer-root",
+    "Fab": "MuiFab-root",
+    "FormControl": "MuiFormControl-root",
+    "FormLabel": "MuiFormLabel-root",
+    "Grid": "MuiGrid-root",
+    "Icon": "MuiIcon-root",
+    "IconButton": "MuiIconButton-root",
+    "LinearProgress": "MuiLinearProgress-root",
+    "Link": "MuiLink-root",
+    "List": "MuiList-root",
+    "ListItem": "MuiListItem-root",
+    "Menu": "MuiMenu-root",
+    "Paper": "MuiPaper-root",
+    "Radio": "MuiRadio-root",
+    "Rating": "MuiRating-root",
+    "Select": "MuiSelect-root",
+    "Skeleton": "MuiSkeleton-root",
+    "Slider": "MuiSlider-root",
+    "Snackbar": "MuiSnackbar-root",
+    "Stepper": "MuiStepper-root",
+    "Switch": "MuiSwitch-root",
+    "Tab": "MuiTab-root",
+    "Table": "MuiTable-root",
+    "TextField": "MuiTextField-root",
+    "ToggleButton": "MuiToggleButton-root",
+    "Toolbar": "MuiToolbar-root",
+    "Tooltip": "MuiTooltip-popper",
+    "Typography": "MuiTypography-root"
+};
 
 function analyzeMUIComponents(muiVersion) {
   // Return cached result if less than 30 seconds old
@@ -306,43 +337,24 @@ function analyzeMUIComponents(muiVersion) {
   const identifiedComponents = {};
   let totalMuiComponents = 0;
 
-  // Focus on most common MUI components for faster analysis
-  const commonMuiPatterns = {
-    "Button": "MuiButton-root",
-    "Typography": "MuiTypography-root",
-    "Paper": "MuiPaper-root",
-    "Card": "MuiCard-root",
-    "TextField": "MuiTextField-root",
-    "IconButton": "MuiIconButton-root",
-    "Chip": "MuiChip-root",
-    "Alert": "MuiAlert-root",
-    "Grid": "MuiGrid-root",
-    "AppBar": "MuiAppBar-root"
-  };
-
-  // Single query for all MUI elements
-  const allMuiElements = document.querySelectorAll('[class*="Mui"]');
-  
-  // Process elements in batches for better performance
-  const batchSize = 100;
-  for (let i = 0; i < allMuiElements.length; i += batchSize) {
-    const batch = Array.from(allMuiElements).slice(i, i + batchSize);
+  try {
+    const allMuiElements = document.querySelectorAll('[class*="Mui"]');
     
-    batch.forEach(element => {
+    allMuiElements.forEach(element => {
       const classList = element.className;
-      for (const [componentName, pattern] of Object.entries(commonMuiPatterns)) {
+      for (const [componentName, pattern] of Object.entries(muiComponentPatterns)) {
         if (classList.includes(pattern)) {
           identifiedComponents[componentName] = (identifiedComponents[componentName] || 0) + 1;
           totalMuiComponents++;
-          break; // Element can only match one pattern
+          break; 
         }
       }
     });
-    
-    // Yield control to avoid blocking
-    if (i % 200 === 0) {
-      setTimeout(() => {}, 0);
-    }
+
+  } catch (error) {
+    console.error("[DSA] Error analyzing MUI components:", error);
+    // Return empty results on error, but don't crash
+    return { identifiedComponents: {}, totalMuiComponents: 0 };
   }
 
   muiAnalysisCache = { identifiedComponents, totalMuiComponents };
@@ -353,8 +365,7 @@ function analyzeMUIComponents(muiVersion) {
 // Enhanced overlay system with slide color effects and better labeling
 function addOverlay(element, label, color, options = {}) {
   // Avoid duplicate overlays
-  if (!element) return;
-  if (element.hasAttribute('data-dsa-overlay')) return;
+  if (!element || element.hasAttribute('data-dsa-overlay')) return;
   element.setAttribute('data-dsa-overlay', 'true');
   
   const { slideColor = false, componentType = 'unknown', count = 1 } = options;
@@ -363,6 +374,12 @@ function addOverlay(element, label, color, options = {}) {
   element.style.setProperty('outline', `3px solid ${color}`, 'important');
   element.style.setProperty('outline-offset', '2px', 'important');
   
+  // Ensure parent has relative positioning for overlay
+  const computedStyle = getComputedStyle(element);
+  if (computedStyle.position === 'static') {
+    element.style.position = 'relative';
+  }
+
   // Add slide color overlay if requested
   if (slideColor) {
     const overlay = document.createElement('div');
@@ -376,20 +393,14 @@ function addOverlay(element, label, color, options = {}) {
     overlay.style.pointerEvents = 'none';
     overlay.style.zIndex = '9998';
     overlay.style.borderRadius = '4px';
-    overlay.setAttribute('data-dsa-overlay', 'true');
-    
-    // Ensure parent has relative positioning for overlay
-    const computedStyle = getComputedStyle(element);
-    if (computedStyle.position === 'static') {
-      element.style.position = 'relative';
-    }
-    
+    overlay.setAttribute('data-dsa-overlay-child', 'true');
     element.appendChild(overlay);
   }
   
   // Create enhanced label with component details
   const labelDiv = document.createElement('div');
   labelDiv.className = 'dsa-component-label';
+  labelDiv.setAttribute('data-dsa-overlay-child', 'true');
   
   // Label content with component type and count
   const labelText = count > 1 ? `${label} (${count})` : label;
@@ -415,12 +426,6 @@ function addOverlay(element, label, color, options = {}) {
   labelDiv.style.lineHeight = '1.2';
   labelDiv.style.minWidth = '60px';
   labelDiv.style.textAlign = 'center';
-  labelDiv.setAttribute('data-dsa-overlay', 'true');
-  
-  // Ensure parent positioning
-  if (getComputedStyle(element).position === 'static') {
-    element.style.position = 'relative';
-  }
   
   element.appendChild(labelDiv);
   
@@ -445,12 +450,11 @@ function removeAllOverlays() {
   document.querySelectorAll('[data-dsa-overlay]').forEach(el => {
     el.style.outline = '';
     el.removeAttribute('data-dsa-overlay');
-    // Remove label divs
-    Array.from(el.children).forEach(child => {
-      if (child.getAttribute && child.getAttribute('data-dsa-overlay') === 'true') {
-        el.removeChild(child);
-      }
-    });
+  });
+
+  // Remove all overlay child elements (labels, slide colors)
+  document.querySelectorAll('[data-dsa-overlay-child]').forEach(child => {
+    child.remove();
   });
 }
 
@@ -484,53 +488,6 @@ function showOverlays({ showMUI = true, showCustom = true, showPackages = true, 
   
   // MUI overlays with enhanced detection
   if (showMUI) {
-    const muiComponentPatterns = {
-      "Accordion": "MuiAccordion-root",
-      "Alert": "MuiAlert-root",
-      "AppBar": "MuiAppBar-root",
-      "Autocomplete": "MuiAutocomplete-root",
-      "Avatar": "MuiAvatar-root",
-      "Badge": "MuiBadge-root",
-      "BottomNavigation": "MuiBottomNavigation-root",
-      "Breadcrumbs": "MuiBreadcrumbs-root",
-      "Button": "MuiButton-root",
-      "ButtonGroup": "MuiButtonGroup-root",
-      "Card": "MuiCard-root",
-      "Checkbox": "MuiCheckbox-root",
-      "Chip": "MuiChip-root",
-      "CircularProgress": "MuiCircularProgress-root",
-      "Dialog": "MuiDialog-root",
-      "Divider": "MuiDivider-root",
-      "Drawer": "MuiDrawer-root",
-      "Fab": "MuiFab-root",
-      "FormControl": "MuiFormControl-root",
-      "FormLabel": "MuiFormLabel-root",
-      "Grid": "MuiGrid-root",
-      "Icon": "MuiIcon-root",
-      "IconButton": "MuiIconButton-root",
-      "LinearProgress": "MuiLinearProgress-root",
-      "Link": "MuiLink-root",
-      "List": "MuiList-root",
-      "ListItem": "MuiListItem-root",
-      "Menu": "MuiMenu-root",
-      "Paper": "MuiPaper-root",
-      "Radio": "MuiRadio-root",
-      "Rating": "MuiRating-root",
-      "Select": "MuiSelect-root",
-      "Skeleton": "MuiSkeleton-root",
-      "Slider": "MuiSlider-root",
-      "Snackbar": "MuiSnackbar-root",
-      "Stepper": "MuiStepper-root",
-      "Switch": "MuiSwitch-root",
-      "Tab": "MuiTab-root",
-      "Table": "MuiTable-root",
-      "TextField": "MuiTextField-root",
-      "ToggleButton": "MuiToggleButton-root",
-      "Toolbar": "MuiToolbar-root",
-      "Tooltip": "MuiTooltip-popper",
-      "Typography": "MuiTypography-root"
-    };
-    
     // Group components by type for better counting
     const componentCounts = {};
     
@@ -781,6 +738,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       analysisData.componentRatio = `MUI: ${muiPct}%, Custom: ${customPct}%`;
     }
     
+    showOverlays({ showMUI: true, showCustom: true, showPackages: true, slideColor: false });
     sendResponse(analysisData);
   }
   

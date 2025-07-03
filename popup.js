@@ -3,7 +3,6 @@ document.addEventListener("DOMContentLoaded", function() {
   let analysisData = null;
   let isAnalyzing = false;
 
-  // Initialize the popup
   function init() {
     setupEventListeners();
     switchTab('overview');
@@ -86,47 +85,46 @@ document.addEventListener("DOMContentLoaded", function() {
       const tab = tabs[0];
       console.log('Attempting to analyze tab:', tab.url);
 
-      // Check if we can inject on this URL
       if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:')) {
         handleAnalysisError(new Error('Cannot analyze browser internal pages. Please navigate to a regular website.'));
         return;
       }
 
-      chrome.tabs.sendMessage(tab.id, {action: "getMUIData"}, function(response) {
-        if (chrome.runtime.lastError) {
-          console.error('Content script error:', chrome.runtime.lastError.message);
-          // Try to inject the content script manually
+      // Ping the content script first to see if it's ready
+      chrome.tabs.sendMessage(tab.id, {action: "ping"}, function(response) {
+        if (chrome.runtime.lastError || !response || response.status !== 'ok') {
+          console.log('Content script not ready, injecting now.');
+          // Inject the script if it's not there
           chrome.scripting.executeScript({
             target: { tabId: tab.id },
             files: ['content.js']
           }, function() {
             if (chrome.runtime.lastError) {
               handleAnalysisError(new Error('Cannot inject content script: ' + chrome.runtime.lastError.message));
+              isAnalyzing = false;
             } else {
-              // Wait a moment then try again
-              setTimeout(function() {
-                chrome.tabs.sendMessage(tab.id, {action: "getMUIData"}, function(response) {
-                  if (chrome.runtime.lastError) {
-                    handleAnalysisError(new Error('Content script still not responding: ' + chrome.runtime.lastError.message));
-                  } else if (response) {
-                    handleAnalysisComplete(response);
-                  } else {
-                    handleAnalysisError(new Error('No response from content script after injection'));
-                  }
-                  isAnalyzing = false;
-                });
-              }, 500);
+              // After injecting, wait a moment and then request analysis
+              setTimeout(function() { fetchMuiData(tab.id); }, 500);
             }
           });
-        } else if (response) {
-          console.log('Analysis response received:', response);
-          handleAnalysisComplete(response);
-          isAnalyzing = false;
         } else {
-          handleAnalysisError(new Error('No response from content script'));
-          isAnalyzing = false;
+          // Content script is ready, fetch the data
+          fetchMuiData(tab.id);
         }
       });
+    });
+  }
+
+  function fetchMuiData(tabId) {
+    chrome.tabs.sendMessage(tabId, {action: "getMUIData"}, function(response) {
+      if (chrome.runtime.lastError) {
+        handleAnalysisError(new Error('Failed to get data from content script: ' + chrome.runtime.lastError.message));
+      } else if (response) {
+        handleAnalysisComplete(response);
+      } else {
+        handleAnalysisError(new Error('No response from content script'));
+      }
+      isAnalyzing = false;
     });
   }
 
@@ -175,11 +173,7 @@ document.addEventListener("DOMContentLoaded", function() {
   function animateCount(elementId, target) {
     const element = document.getElementById(elementId);
     if (!element) return;
-
-    const current = parseInt(element.textContent) || 0;
-    if (current !== target) {
-      element.textContent = target;
-    }
+    element.textContent = target;
   }
 
   function updateCoverageBar(data) {
@@ -215,11 +209,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function populateComponentsTab() {
     const grid = document.getElementById('componentGrid');
-    console.log('Populating components tab:', {
-      grid: !!grid,
-      muiComponentDetails: analysisData?.muiComponentDetails,
-      analysisData: analysisData
-    });
+    console.log('Populating components tab:', analysisData);
     
     if (!grid) {
       console.error('Component grid element not found');
@@ -255,11 +245,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function populatePackagesTab() {
     const grid = document.getElementById('packageGrid');
-    console.log('Populating packages tab:', {
-      grid: !!grid,
-      packageDependencies: analysisData?.packageDependencies,
-      analysisData: analysisData
-    });
+    console.log('Populating packages tab:', analysisData);
     
     if (!grid) {
       console.error('Package grid element not found');
@@ -294,19 +280,19 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function getCategoryIcon(category) {
     const icons = {
-      'Roku RDS': '🎵',
-      'MUI Core': '🔵',
-      'MUI Styling': '🎨',
-      'MUI Icons': '🔤',
-      'MUI Fonts': '🔤',
-      'MUI X': '⚡',
-      'MUI Labs': '🧪',
-      'Development Tools': '🛠️',
-      'Framework': '⚛️',
-      'CSS Framework': '💎',
-      'Library': '📚'
+      'Roku RDS': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 12L2 9z"/></svg>',
+      'MUI Core': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>',
+      'MUI Styling': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>',
+      'MUI Icons': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>',
+      'MUI Fonts': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>',
+      'MUI X': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+      'MUI Labs': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/><path d="M12 22V12"/></svg>',
+      'Development Tools': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+      'Framework': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0-3.46 19.46"/><path d="M12 22a10 10 0 0 0 3.46-19.46"/><path d="M2 12h20"/></svg>',
+      'CSS Framework': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l-10 5 10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
+      'Library': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20v2H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M4 5h16v12H4V5z"/></svg>'
     };
-    return icons[category] || '📦';
+    return icons[category] || '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>';
   }
 
   function generateInsights(data) {
@@ -367,6 +353,5 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  // Start the application
   init();
 });
