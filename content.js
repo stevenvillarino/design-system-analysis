@@ -1,5 +1,7 @@
 // content.js
 
+console.log('[DSA] Design System Analyzer content script loaded at:', new Date().toISOString());
+
 // Enhanced MUI ecosystem and design system package detection
 let packageCache = null;
 let packageCacheTime = 0;
@@ -250,14 +252,22 @@ function detectMUI() {
       '[class*="MuiButton-"]', 
       '[class*="MuiInput-"]',
       '[class*="MuiTypography-"]',
+      '[class*="MuiBox-"]',
+      '[class*="MuiContainer-"]',
+      '[class*="MuiFormControl-"]',
+      '[class*="MuiPaper-"]',
+      '[class*="MuiSvgIcon-"]',
+      '[class*="Mui"]', // Generic MUI class check
       '[class*="css-"][id*="mui-"]', // More generic but often used by MUI v5+ styled components
       'script[src*="@mui/"]', // Check for MUI script tags
       'link[href*="@mui/"]' // Check for MUI CSS links
     ];
 
     for (const selector of muiSelectors) {
-      if (document.querySelector(selector)) {
+      const elements = document.querySelectorAll(selector);
+      if (elements.length > 0) {
         muiDetected = true;
+        if (debugMode) console.log(`[DSA-DEBUG] MUI detected via selector: ${selector}, found ${elements.length} elements`);
         break;
       }
     }
@@ -289,6 +299,16 @@ function detectMUI() {
     }
   }
 
+  if (debugMode) {
+    console.log(`[DSA-DEBUG] MUI Detection Results:`, { muiDetected, muiVersion });
+    if (muiDetected) {
+      const allMuiElements = document.querySelectorAll('[class*="Mui"]');
+      console.log(`[DSA-DEBUG] Total elements with Mui classes: ${allMuiElements.length}`);
+      const sampleElements = Array.from(allMuiElements).slice(0, 5);
+      console.log(`[DSA-DEBUG] Sample MUI elements:`, sampleElements.map(el => el.className));
+    }
+  }
+
   return { muiDetected, muiVersion };
 }
 
@@ -297,9 +317,11 @@ let muiAnalysisCache = null;
 let muiCacheTime = 0;
 
 function analyzeMUIComponents(muiVersion) {
+  if (debugMode) console.log('[DSA-DEBUG] Starting MUI component analysis');
   // Return cached result if less than 30 seconds old
   const now = Date.now();
   if (muiAnalysisCache && (now - muiCacheTime) < 30000) {
+    if (debugMode) console.log('[DSA-DEBUG] Returning cached MUI analysis');
     return muiAnalysisCache;
   }
   
@@ -317,11 +339,28 @@ function analyzeMUIComponents(muiVersion) {
     "Chip": "MuiChip-root",
     "Alert": "MuiAlert-root",
     "Grid": "MuiGrid-root",
-    "AppBar": "MuiAppBar-root"
+    "AppBar": "MuiAppBar-root",
+    "Box": "MuiBox-root",
+    "Container": "MuiContainer-root",
+    "FormControl": "MuiFormControl-root",
+    "InputLabel": "MuiInputLabel-root",
+    "InputBase": "MuiInputBase-root",
+    "OutlinedInput": "MuiOutlinedInput-root",
+    "FormLabel": "MuiFormLabel-root",
+    "SvgIcon": "MuiSvgIcon-root",
+    "ButtonBase": "MuiButtonBase-root",
+    "Accordion": "MuiAccordion-root",
+    "AccordionSummary": "MuiAccordionSummary-root",
+    "AccordionDetails": "MuiAccordionDetails-root",
+    "Collapse": "MuiCollapse-root",
+    "Switch": "MuiSwitch-root",
+    "Divider": "MuiDivider-root",
+    "InputAdornment": "MuiInputAdornment-root"
   };
 
   // Single query for all MUI elements
   const allMuiElements = document.querySelectorAll('[class*="Mui"]');
+  if (debugMode) console.log(`[DSA-DEBUG] Found ${allMuiElements.length} elements with 'Mui' in class name`);
   
   // Process elements in batches for better performance
   const batchSize = 100;
@@ -329,9 +368,12 @@ function analyzeMUIComponents(muiVersion) {
     const batch = Array.from(allMuiElements).slice(i, i + batchSize);
     
     batch.forEach(element => {
-      const classList = element.className;
+      const className = element.className;
+      if (!className || typeof className !== 'string') return;
+      
       for (const [componentName, pattern] of Object.entries(commonMuiPatterns)) {
-        if (classList.includes(pattern)) {
+        if (className.includes(pattern)) {
+          if (debugMode) console.log(`[DSA-DEBUG] Identified component: ${componentName}`, element);
           identifiedComponents[componentName] = (identifiedComponents[componentName] || 0) + 1;
           totalMuiComponents++;
           break; // Element can only match one pattern
@@ -345,6 +387,7 @@ function analyzeMUIComponents(muiVersion) {
     }
   }
 
+  if (debugMode) console.log(`[DSA-DEBUG] MUI analysis complete. Found ${totalMuiComponents} components.`, identifiedComponents);
   muiAnalysisCache = { identifiedComponents, totalMuiComponents };
   muiCacheTime = now;
   return muiAnalysisCache;
@@ -425,7 +468,7 @@ function addOverlay(element, label, color, options = {}) {
   element.appendChild(labelDiv);
   
   // Add hover effect
-  const originalOutline = element.style.outline;
+  const originalOutline = `3px solid ${color}`;
   element.addEventListener('mouseenter', () => {
     element.style.setProperty('outline', `4px solid ${color}`, 'important');
     element.style.setProperty('outline-offset', '3px', 'important');
@@ -458,7 +501,7 @@ function removeAllOverlays() {
 function isGlobalElement(el) {
   const tag = el.tagName.toLowerCase();
   if (tag === 'nav' || tag === 'footer' || tag === 'header') return true;
-  if (el.className && /global|navbar|footer|header/i.test(el.className)) return true;
+  if (el.className && typeof el.className === 'string' && /global|navbar|footer|header/i.test(el.className)) return true;
   return false;
 }
 
@@ -486,33 +529,44 @@ function showOverlays({ showMUI = true, showCustom = true, showPackages = true, 
   if (showMUI) {
     const muiComponentPatterns = {
       "Accordion": "MuiAccordion-root",
+      "AccordionSummary": "MuiAccordionSummary-root",
+      "AccordionDetails": "MuiAccordionDetails-root",
       "Alert": "MuiAlert-root",
       "AppBar": "MuiAppBar-root",
       "Autocomplete": "MuiAutocomplete-root",
       "Avatar": "MuiAvatar-root",
       "Badge": "MuiBadge-root",
       "BottomNavigation": "MuiBottomNavigation-root",
+      "Box": "MuiBox-root",
       "Breadcrumbs": "MuiBreadcrumbs-root",
       "Button": "MuiButton-root",
+      "ButtonBase": "MuiButtonBase-root",
       "ButtonGroup": "MuiButtonGroup-root",
       "Card": "MuiCard-root",
       "Checkbox": "MuiCheckbox-root",
       "Chip": "MuiChip-root",
       "CircularProgress": "MuiCircularProgress-root",
+      "Collapse": "MuiCollapse-root",
+      "Container": "MuiContainer-root",
       "Dialog": "MuiDialog-root",
       "Divider": "MuiDivider-root",
       "Drawer": "MuiDrawer-root",
       "Fab": "MuiFab-root",
       "FormControl": "MuiFormControl-root",
+      "FormControlLabel": "MuiFormControlLabel-root",
       "FormLabel": "MuiFormLabel-root",
       "Grid": "MuiGrid-root",
       "Icon": "MuiIcon-root",
       "IconButton": "MuiIconButton-root",
+      "InputAdornment": "MuiInputAdornment-root",
+      "InputBase": "MuiInputBase-root",
+      "InputLabel": "MuiInputLabel-root",
       "LinearProgress": "MuiLinearProgress-root",
       "Link": "MuiLink-root",
       "List": "MuiList-root",
       "ListItem": "MuiListItem-root",
       "Menu": "MuiMenu-root",
+      "OutlinedInput": "MuiOutlinedInput-root",
       "Paper": "MuiPaper-root",
       "Radio": "MuiRadio-root",
       "Rating": "MuiRating-root",
@@ -521,6 +575,7 @@ function showOverlays({ showMUI = true, showCustom = true, showPackages = true, 
       "Slider": "MuiSlider-root",
       "Snackbar": "MuiSnackbar-root",
       "Stepper": "MuiStepper-root",
+      "SvgIcon": "MuiSvgIcon-root",
       "Switch": "MuiSwitch-root",
       "Tab": "MuiTab-root",
       "Table": "MuiTable-root",
@@ -575,6 +630,7 @@ function showOverlays({ showMUI = true, showCustom = true, showPackages = true, 
       if (el.hasAttribute('data-dsa-overlay')) return;
       if (isGlobalElement(el)) return;
       
+      if (!el.className || typeof el.className !== 'string') return;
       const classList = el.className.split(' ').filter(Boolean);
       if (classList.length <= 1) return;
       
@@ -636,6 +692,7 @@ function showOverlays({ showMUI = true, showCustom = true, showPackages = true, 
     // Ant Design components
     document.querySelectorAll('[class*="ant-"]').forEach(el => {
       if (!el.hasAttribute('data-dsa-overlay') && !isGlobalElement(el)) {
+        if (!el.className || typeof el.className !== 'string') return;
         const classList = el.className.split(' ');
         const antClass = classList.find(cls => cls.startsWith('ant-'));
         if (antClass) {
@@ -684,6 +741,7 @@ function analyzeCustomComponents() {
     const el = potentialCustom[i];
     if (el.hasAttribute('data-dsa-overlay') || isGlobalElement(el)) continue;
     
+    if (!el.className || typeof el.className !== 'string') continue;
     const classList = el.className.split(' ').filter(Boolean);
     if (classList.length <= 1) continue;
     
@@ -707,90 +765,157 @@ function analyzeCustomComponents() {
   return customCount;
 }
 
+let debugMode = true; // Enable debug mode to help troubleshoot
+
 // Enhanced message listener with comprehensive package detection
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "ping") {
-    sendResponse({ status: "ok" });
-    return true;
-  }
-  
-  if (request.action === "getMUIData") {
-    const detectionData = detectMUI();
-    const allPackages = detectAllPackages();
+  try {
+    if (debugMode) console.log('[DSA-DEBUG] Received message:', request.action);
     
-    let analysisData = {
-       ...detectionData,
-       muiComponentDetails: null,
-       totalMuiComponents: 0,
-       customComponentCount: 0,
-       componentRatio: "N/A",
-       packageDependencies: allPackages,
-       designTokens: [],
-       detectedPackages: allPackages.length,
-       packageBreakdown: {}
-    };
+    if (request.action === "ping") {
+      sendResponse({ status: "ok" });
+      return true;
+    }
 
-    if (detectionData.muiDetected) {
-      const componentAnalysis = analyzeMUIComponents(detectionData.muiVersion);
-      analysisData.muiComponentDetails = componentAnalysis.identifiedComponents;
-      analysisData.totalMuiComponents = componentAnalysis.totalMuiComponents;
+    if (request.action === "toggleOverlays") {
+      if (typeof request.options.debugMode !== 'undefined') {
+        debugMode = request.options.debugMode;
+        console.log(`[DSA] Debug mode ${debugMode ? 'enabled' : 'disabled'}`);
+      }
+      const overlayResults = showOverlays(request.options || {});
+      sendResponse({ success: true, ...overlayResults });
+      return true;
     }
     
-    // Calculate custom components and ratio
-    const customCount = analyzeCustomComponents();
-    analysisData.customComponentCount = customCount;
-    
-    // Enhanced package breakdown with MUI ecosystem focus
-    const packageBreakdown = {};
-    const muiEcosystem = {
-      corePackages: [],
-      stylingPackages: [],
-      iconPackages: [],
-      advancedPackages: [],
-      devTools: []
-    };
-    
-    allPackages.forEach(pkg => {
-      const category = pkg.category || categorizePackage(pkg.name);
-      if (!packageBreakdown[category]) {
-        packageBreakdown[category] = [];
+    if (request.action === "getMUIData") {
+      try {
+        if (debugMode) console.log('[DSA-DEBUG] Starting MUI data analysis...');
+        
+        const detectionData = detectMUI();
+        if (debugMode) console.log('[DSA-DEBUG] MUI detection complete:', detectionData);
+        
+        const allPackages = detectAllPackages();
+        if (debugMode) console.log('[DSA-DEBUG] Package detection complete:', allPackages.length, 'packages found');
+        
+        let analysisData = {
+           ...detectionData,
+           muiComponentDetails: null,
+           totalMuiComponents: 0,
+           customComponentCount: 0,
+           componentRatio: "N/A",
+           packageDependencies: allPackages,
+           designTokens: [],
+           detectedPackages: allPackages.length,
+           packageBreakdown: {}
+        };
+
+        if (detectionData.muiDetected) {
+          if (debugMode) console.log('[DSA-DEBUG] MUI detected, analyzing components...');
+          const componentAnalysis = analyzeMUIComponents(detectionData.muiVersion);
+          analysisData.muiComponentDetails = componentAnalysis.identifiedComponents;
+          analysisData.totalMuiComponents = componentAnalysis.totalMuiComponents;
+          if (debugMode) console.log('[DSA-DEBUG] MUI component analysis complete:', componentAnalysis);
+        } else {
+          if (debugMode) console.log('[DSA-DEBUG] MUI not detected, checking for manual detection...');
+          // Fallback: try manual detection if automatic failed
+          const manualMuiElements = document.querySelectorAll('[class*="Mui"]');
+          if (manualMuiElements.length > 0) {
+            if (debugMode) console.log('[DSA-DEBUG] Manual MUI detection found', manualMuiElements.length, 'elements');
+            analysisData.muiDetected = true;
+            analysisData.muiVersion = 'Detected via fallback';
+            // Quick count of MUI components
+            const quickAnalysis = {};
+            manualMuiElements.forEach(el => {
+              const className = el.className;
+              if (!className || typeof className !== 'string') return;
+              
+              const match = className.match(/Mui(\w+)-root/);
+              if (match) {
+                const componentName = match[1];
+                quickAnalysis[componentName] = (quickAnalysis[componentName] || 0) + 1;
+              }
+            });
+            analysisData.muiComponentDetails = quickAnalysis;
+            analysisData.totalMuiComponents = Object.values(quickAnalysis).reduce((sum, count) => sum + count, 0);
+            if (debugMode) console.log('[DSA-DEBUG] Manual MUI analysis complete:', quickAnalysis, 'Total:', analysisData.totalMuiComponents);
+          }
+        }
+        
+        // Calculate custom components and ratio
+        if (debugMode) console.log('[DSA-DEBUG] Analyzing custom components...');
+        const customCount = analyzeCustomComponents();
+        analysisData.customComponentCount = customCount;
+        if (debugMode) console.log('[DSA-DEBUG] Custom component analysis complete:', customCount);
+        
+        // Enhanced package breakdown with MUI ecosystem focus
+        const packageBreakdown = {};
+        const muiEcosystem = {
+          corePackages: [],
+          stylingPackages: [],
+          iconPackages: [],
+          advancedPackages: [],
+          devTools: []
+        };
+        
+        allPackages.forEach(pkg => {
+          const category = pkg.category || categorizePackage(pkg.name);
+          if (!packageBreakdown[category]) {
+            packageBreakdown[category] = [];
+          }
+          packageBreakdown[category].push(pkg);
+          
+          // Organize MUI ecosystem packages
+          if (category === 'MUI Core') {
+            muiEcosystem.corePackages.push(pkg);
+          } else if (category === 'MUI Styling') {
+            muiEcosystem.stylingPackages.push(pkg);
+          } else if (category === 'MUI Icons' || category === 'MUI Fonts') {
+            muiEcosystem.iconPackages.push(pkg);
+          } else if (category === 'MUI X' || category === 'MUI Labs') {
+            muiEcosystem.advancedPackages.push(pkg);
+          } else if (category === 'Development Tools') {
+            muiEcosystem.devTools.push(pkg);
+          }
+        });
+        
+        analysisData.packageBreakdown = packageBreakdown;
+        analysisData.muiEcosystem = muiEcosystem;
+        
+        const total = (analysisData.totalMuiComponents || 0) + customCount;
+        if (total > 0) {
+          const muiPct = Math.round((analysisData.totalMuiComponents / total) * 100);
+          const customPct = 100 - muiPct;
+          analysisData.componentRatio = `MUI: ${muiPct}%, Custom: ${customPct}%`;
+        }
+        
+        if (debugMode) console.log('[DSA-DEBUG] Final analysis data:', analysisData);
+        sendResponse(analysisData);
+        
+      } catch (error) {
+        console.error('[DSA-ERROR] Analysis failed:', error);
+        sendResponse({
+          error: true,
+          message: error.message,
+          muiDetected: false,
+          totalMuiComponents: 0,
+          customComponentCount: 0,
+          packageDependencies: [],
+          detectedPackages: 0
+        });
       }
-      packageBreakdown[category].push(pkg);
-      
-      // Organize MUI ecosystem packages
-      if (category === 'MUI Core') {
-        muiEcosystem.corePackages.push(pkg);
-      } else if (category === 'MUI Styling') {
-        muiEcosystem.stylingPackages.push(pkg);
-      } else if (category === 'MUI Icons' || category === 'MUI Fonts') {
-        muiEcosystem.iconPackages.push(pkg);
-      } else if (category === 'MUI X' || category === 'MUI Labs') {
-        muiEcosystem.advancedPackages.push(pkg);
-      } else if (category === 'Development Tools') {
-        muiEcosystem.devTools.push(pkg);
-      }
+      return; // Don't return true for synchronous response
+    }
+    
+    return true; // Indicates that the response is sent asynchronously
+    
+  } catch (error) {
+    console.error('[DSA-ERROR] Message handler failed:', error);
+    sendResponse({
+      error: true,
+      message: 'Content script error: ' + error.message
     });
-    
-    analysisData.packageBreakdown = packageBreakdown;
-    analysisData.muiEcosystem = muiEcosystem;
-    
-    const total = (analysisData.totalMuiComponents || 0) + customCount;
-    if (total > 0) {
-      const muiPct = Math.round((analysisData.totalMuiComponents / total) * 100);
-      const customPct = 100 - muiPct;
-      analysisData.componentRatio = `MUI: ${muiPct}%, Custom: ${customPct}%`;
-    }
-    
-    sendResponse(analysisData);
-  }
-  
-  if (request.action === "toggleOverlays") {
-    const overlayResults = showOverlays(request.options || {});
-    sendResponse({ success: true, ...overlayResults });
     return true;
   }
-  
-  return true; // Indicates that the response is sent asynchronously
 });
 
 // Helper function to categorize packages

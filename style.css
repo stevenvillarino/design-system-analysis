@@ -515,6 +515,12 @@ body {
   border-left: 3px solid var(--color-error);
 }
 
+.insight-card.info {
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--color-primary);
+  border-left: 3px solid var(--color-primary);
+}
+
 /* Component and Package Grids */
 .component-grid,
 .package-grid {

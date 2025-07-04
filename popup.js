@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded", function() {
       });
     }
 
-    const toggleIds = ['muiOverlayToggle', 'customOverlayToggle', 'packageOverlayToggle', 'slideColorToggle'];
+    const toggleIds = ['muiOverlayToggle', 'customOverlayToggle', 'packageOverlayToggle', 'slideColorToggle', 'debugModeToggle'];
     toggleIds.forEach(function(id) {
       const toggle = document.getElementById(id);
       if (toggle) {
@@ -92,39 +92,82 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
-      chrome.tabs.sendMessage(tab.id, {action: "getMUIData"}, function(response) {
-        if (chrome.runtime.lastError) {
-          console.error('Content script error:', chrome.runtime.lastError.message);
-          // Try to inject the content script manually
+      // First try to ping the content script to see if it's already there
+      chrome.tabs.sendMessage(tab.id, {action: "ping"}, function(pingResponse) {
+        if (chrome.runtime.lastError || !pingResponse) {
+          console.log('Content script not found, injecting...');
+          // Inject content script
           chrome.scripting.executeScript({
             target: { tabId: tab.id },
             files: ['content.js']
-          }, function() {
+          }, function(injectionResults) {
             if (chrome.runtime.lastError) {
+              console.error('Injection failed:', chrome.runtime.lastError.message);
               handleAnalysisError(new Error('Cannot inject content script: ' + chrome.runtime.lastError.message));
-            } else {
-              // Wait a moment then try again
-              setTimeout(function() {
-                chrome.tabs.sendMessage(tab.id, {action: "getMUIData"}, function(response) {
-                  if (chrome.runtime.lastError) {
-                    handleAnalysisError(new Error('Content script still not responding: ' + chrome.runtime.lastError.message));
-                  } else if (response) {
-                    handleAnalysisComplete(response);
+              isAnalyzing = false;
+              return;
+            }
+            
+            console.log('Content script injected, waiting...');
+            // Wait longer and try multiple times
+            let attempts = 0;
+            const maxAttempts = 5;
+            
+            function tryAnalysis() {
+              attempts++;
+              console.log(`Analysis attempt ${attempts}/${maxAttempts}`);
+              
+              chrome.tabs.sendMessage(tab.id, {action: "getMUIData"}, function(response) {
+                if (chrome.runtime.lastError) {
+                  console.error(`Attempt ${attempts} failed:`, chrome.runtime.lastError.message);
+                  if (attempts < maxAttempts) {
+                    setTimeout(tryAnalysis, 1000); // Wait 1 second between attempts
                   } else {
-                    handleAnalysisError(new Error('No response from content script after injection'));
+                    handleAnalysisError(new Error('Content script not responding after ' + maxAttempts + ' attempts: ' + chrome.runtime.lastError.message));
+                    isAnalyzing = false;
+                  }
+                } else if (response) {
+                  console.log('Analysis response received:', response);
+                  if (response.error) {
+                    handleAnalysisError(new Error(response.message || 'Content script error'));
+                  } else {
+                    handleAnalysisComplete(response);
                   }
                   isAnalyzing = false;
-                });
-              }, 500);
+                } else {
+                  console.log(`Attempt ${attempts}: No response from content script`);
+                  if (attempts < maxAttempts) {
+                    setTimeout(tryAnalysis, 1000);
+                  } else {
+                    handleAnalysisError(new Error('No response from content script after ' + maxAttempts + ' attempts'));
+                    isAnalyzing = false;
+                  }
+                }
+              });
             }
+            
+            // Start first attempt after injection
+            setTimeout(tryAnalysis, 1000);
           });
-        } else if (response) {
-          console.log('Analysis response received:', response);
-          handleAnalysisComplete(response);
-          isAnalyzing = false;
         } else {
-          handleAnalysisError(new Error('No response from content script'));
-          isAnalyzing = false;
+          console.log('Content script already present, requesting analysis...');
+          // Content script is already there, request analysis directly
+          chrome.tabs.sendMessage(tab.id, {action: "getMUIData"}, function(response) {
+            if (chrome.runtime.lastError) {
+              console.error('Analysis request failed:', chrome.runtime.lastError.message);
+              handleAnalysisError(new Error('Content script error: ' + chrome.runtime.lastError.message));
+            } else if (response) {
+              console.log('Analysis response received:', response);
+              if (response.error) {
+                handleAnalysisError(new Error(response.message || 'Content script error'));
+              } else {
+                handleAnalysisComplete(response);
+              }
+            } else {
+              handleAnalysisError(new Error('No response from content script'));
+            }
+            isAnalyzing = false;
+          });
         }
       });
     });
@@ -132,6 +175,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function handleAnalysisComplete(data) {
     console.log('Analysis data received:', data);
+    console.log('MUI detected:', data.muiDetected);
+    console.log('Total MUI components:', data.totalMuiComponents);
+    console.log('Custom components:', data.customComponentCount);
+    console.log('Package count:', data.detectedPackages);
+    
     analysisData = data;
     hideLoading();
     updateStatsCards(data);
@@ -147,12 +195,12 @@ document.addEventListener("DOMContentLoaded", function() {
     
     ['muiCount', 'customCount', 'packageCount'].forEach(function(id) {
       const element = document.getElementById(id);
-      if (element) element.textContent = '!';
+      if (element) element.textContent = '0';
     });
 
     const insightCards = document.getElementById('insightCards');
     if (insightCards) {
-      insightCards.innerHTML = '<div class="insight-card negative">Analysis failed. Try refreshing the page.</div>';
+      insightCards.innerHTML = '<div class="insight-card negative">Analysis failed: ' + error.message + '</div>';
     }
   }
 
@@ -313,11 +361,20 @@ document.addEventListener("DOMContentLoaded", function() {
     const insights = [];
     const total = (data.totalMuiComponents || 0) + (data.customComponentCount || 0);
     
+    console.log('Generating insights with data:', data);
+    
     if (total === 0) {
-      insights.push({
-        type: 'warning',
-        message: 'No components detected. This might be a static page.'
-      });
+      if (data.muiDetected) {
+        insights.push({
+          type: 'warning',
+          message: 'MUI detected but no components found. Page might still be loading.'
+        });
+      } else {
+        insights.push({
+          type: 'warning',
+          message: 'No components detected. This might be a static page or MUI is not in use.'
+        });
+      }
     } else {
       const muiPercent = Math.round((data.totalMuiComponents / total) * 100);
       
@@ -339,6 +396,14 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     }
 
+    // Add debug information if available
+    if (data.muiDetected) {
+      insights.push({
+        type: 'info',
+        message: 'MUI Version: ' + (data.muiVersion || 'Unknown')
+      });
+    }
+
     const insightCards = document.getElementById('insightCards');
     if (insightCards) {
       let html = '';
@@ -354,7 +419,8 @@ document.addEventListener("DOMContentLoaded", function() {
       showMUI: document.getElementById('muiOverlayToggle') ? document.getElementById('muiOverlayToggle').checked : true,
       showCustom: document.getElementById('customOverlayToggle') ? document.getElementById('customOverlayToggle').checked : true,
       showPackages: document.getElementById('packageOverlayToggle') ? document.getElementById('packageOverlayToggle').checked : true,
-      slideColor: document.getElementById('slideColorToggle') ? document.getElementById('slideColorToggle').checked : false
+      slideColor: document.getElementById('slideColorToggle') ? document.getElementById('slideColorToggle').checked : false,
+      debugMode: document.getElementById('debugModeToggle') ? document.getElementById('debugModeToggle').checked : true // Keep debug enabled
     };
 
     chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
@@ -362,6 +428,12 @@ document.addEventListener("DOMContentLoaded", function() {
         chrome.tabs.sendMessage(tabs[0].id, { 
           action: "toggleOverlays", 
           options: options 
+        }, function(response) {
+          if (chrome.runtime.lastError) {
+            console.log('Overlay toggle failed:', chrome.runtime.lastError.message);
+          } else {
+            console.log('Overlay toggle response:', response);
+          }
         });
       }
     });

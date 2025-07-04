@@ -36,124 +36,75 @@
     </div>
 
     <!-- Main Content -->
-    <main class="main-content" id="mainContent" style="display: none;">
-      
-      <!-- Quick Stats -->
-      <section class="stats-grid">
-        <div class="stat-card mui">
-          <div class="stat-icon">🔵</div>
-          <div class="stat-content">
-            <div class="stat-number" id="muiCount">0</div>
-            <div class="stat-label">MUI Components</div>
-          </div>
-        </div>
-        
-        <div class="stat-card custom">
-          <div class="stat-icon">🔴</div>
-          <div class="stat-content">
-            <div class="stat-number" id="customCount">0</div>
-            <div class="stat-label">Custom Components</div>
-          </div>
-        </div>
-        
-        <div class="stat-card packages">
-          <div class="stat-icon">📦</div>
-          <div class="stat-content">
-            <div class="stat-number" id="packageCount">0</div>
-            <div class="stat-label">Packages</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Controls -->
-      <section class="controls-section">
-        <div class="control-group">
-          <label class="control-label">Overlays</label>
-          <div class="toggle-grid">
-            <label class="toggle-item">
-              <input type="checkbox" id="muiOverlayToggle" checked>
-              <span class="toggle-slider"></span>
-              <span class="toggle-text">MUI</span>
-            </label>
-            
-            <label class="toggle-item">
-              <input type="checkbox" id="customOverlayToggle" checked>
-              <span class="toggle-slider"></span>
-              <span class="toggle-text">Custom</span>
-            </label>
-            
-            <label class="toggle-item">
-              <input type="checkbox" id="packageOverlayToggle" checked>
-              <span class="toggle-slider"></span>
-              <span class="toggle-text">Packages</span>
-            </label>
-          </div>
-        </div>
-        
-        <div class="control-group">
-          <label class="toggle-item highlight">
-            <input type="checkbox" id="slideColorToggle">
-            <span class="toggle-slider"></span>
-            <span class="toggle-text">Highlight Effects</span>
-          </label>
-        </div>
-      </section>
-
-      <!-- Tabs -->
-      <section class="tabs-section">
-        <div class="tab-list" role="tablist">
-          <button class="tab-button active" data-tab="overview" role="tab">Overview</button>
-          <button class="tab-button" data-tab="components" role="tab">Components</button>
-          <button class="tab-button" data-tab="packages" role="tab">Packages</button>
-        </div>
-
-        <!-- Overview Tab -->
-        <div class="tab-content active" id="overview-tab">
-          <div class="section-description">
-            <p>📊 Overview of your page's design system adoption and component usage patterns.</p>
-          </div>
-          
-          <div class="coverage-section">
-            <h3 class="section-title">Coverage Analysis</h3>
-            <div class="coverage-bar">
-              <div class="coverage-mui" id="coverageBarMui" style="width: 0%"></div>
-              <div class="coverage-custom" id="coverageBarCustom" style="width: 0%"></div>
-            </div>
-            <div class="coverage-legend">
-              <span class="legend-item mui">MUI: <span id="muiPercentage">0%</span></span>
-              <span class="legend-item custom">Custom: <span id="customPercentage">0%</span></span>
+    <div class="main-content" id="mainContent" style="display: block;">
+      <div id="analysis-results">
+        <div class="stats-grid">
+          <div class="stat-card mui">
+            <div class="stat-icon">🔵</div>
+            <div class="stat-content">
+              <div class="stat-number" id="muiCount">-</div>
+              <div class="stat-label">MUI Components</div>
             </div>
           </div>
-          
-          <div class="insights-section" id="insightsSection">
-            <h3 class="section-title">Insights</h3>
-            <div class="insight-cards" id="insightCards">
-              <!-- Dynamic insights will be added here -->
+          <div class="stat-card custom">
+            <div class="stat-icon">🟠</div>
+            <div class="stat-content">
+              <div class="stat-number" id="customCount">-</div>
+              <div class="stat-label">Custom</div>
+            </div>
+          </div>
+          <div class="stat-card packages">
+            <div class="stat-icon">📦</div>
+            <div class="stat-content">
+              <div class="stat-number" id="packageCount">-</div>
+              <div class="stat-label">Packages</div>
             </div>
           </div>
         </div>
 
-        <!-- Components Tab -->
-        <div class="tab-content" id="components-tab">
-          <div class="section-description">
-            <p>🧩 Individual MUI components detected on this page with usage counts.</p>
+        <div class="coverage-section">
+          <h3 class="section-title">Coverage Analysis <span class="tooltip-icon" title="This shows the ratio of MUI components to custom-built components on the page.">?</span></h3>
+          <div class="coverage-bar">
+            <div class="coverage-mui" id="coverageBarMui" style="width: 0%;"></div>
+            <div class="coverage-custom" id="coverageBarCustom" style="width: 0%;"></div>
           </div>
-          <div class="component-grid" id="componentGrid">
-            <!-- Dynamic component cards will be added here -->
+          <div class="coverage-legend">
+            <div class="legend-item mui"><span id="muiPercentage">0%</span> MUI</div>
+            <div class="legend-item custom"><span id="customPercentage">0%</span> Custom</div>
           </div>
         </div>
 
-        <!-- Packages Tab -->
-        <div class="tab-content" id="packages-tab">
-          <div class="section-description">
-            <p>📦 Design system packages and dependencies detected through script analysis.</p>
-          </div>
-          <div class="package-grid" id="packageGrid">
-            <!-- Dynamic package cards will be added here -->
+        <div class="insights-section">
+          <h3 class="section-title">Insights</h3>
+          <div class="insight-cards" id="insightCards">
+            <div class="insight-card">Click "Analyze Page" to see insights.</div>
           </div>
         </div>
-      </section>
-    </main>
+
+        <div class="tabs-section">
+          <div class="tab-list">
+            <button class="tab-button active" data-tab="components">Components</button>
+            <button class="tab-button" data-tab="packages">Packages</button>
+            <button class="tab-button" data-tab="debug">Debug</button>
+          </div>
+          <div class="tab-content active" id="components-tab">
+            <div class="component-grid" id="componentGrid">
+              <!-- Component cards will be injected here -->
+            </div>
+          </div>
+          <div class="tab-content" id="packages-tab">
+            <div class="package-grid" id="packageGrid">
+              <!-- Package cards will be injected here -->
+            </div>
+          </div>
+          <div class="tab-content" id="debug-tab">
+            <div class="debug-output" id="debugOutput">
+              <div class="debug-entry">Debug logs will appear here when enabled.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="popup.js"></script>
