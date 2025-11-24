@@ -12,19 +12,17 @@
     <header class="header">
       <div class="header-content">
         <div class="logo">
-          <span class="logo-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div class="header-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z" fill="currentColor"/>
             </svg>
-          </span>
-          <span class="logo-text">DS Analyzer</span>
+          </div>
+          <span class="header-title">Design System Analyzer</span>
         </div>
         <button class="refresh-btn" id="refreshBtn" title="Refresh Analysis">
-          <span class="refresh-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </button>
       </div>
     </header>
@@ -38,68 +36,165 @@
     <!-- Main Content -->
     <div class="main-content" id="mainContent" style="display: block;">
       <div id="analysis-results">
-        <div class="stats-grid">
-          <div class="stat-card mui">
-            <div class="stat-icon">🔵</div>
-            <div class="stat-content">
-              <div class="stat-number" id="muiCount">-</div>
-              <div class="stat-label">MUI Components</div>
+        <!-- Stats Grid -->
+        <div class="stats-section">
+          <div class="stats-grid">
+            <div class="stat-card mui">
+              <div class="stat-content">
+                <div class="stat-header">
+                  <div class="stat-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                      <path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <span class="stat-label">MUI Components</span>
+                </div>
+                <div class="stat-number" id="muiCount">-</div>
+              </div>
             </div>
-          </div>
-          <div class="stat-card custom">
-            <div class="stat-icon">🟠</div>
-            <div class="stat-content">
-              <div class="stat-number" id="customCount">-</div>
-              <div class="stat-label">Custom</div>
+            
+            <div class="stat-card custom">
+              <div class="stat-content">
+                <div class="stat-header">
+                  <div class="stat-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  <span class="stat-label">Custom</span>
+                </div>
+                <div class="stat-number" id="customCount">-</div>
+              </div>
             </div>
-          </div>
-          <div class="stat-card packages">
-            <div class="stat-icon">📦</div>
-            <div class="stat-content">
-              <div class="stat-number" id="packageCount">-</div>
-              <div class="stat-label">Packages</div>
+            
+            <div class="stat-card packages">
+              <div class="stat-content">
+                <div class="stat-header">
+                  <div class="stat-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" stroke="currentColor" stroke-width="2"/>
+                      <polyline points="3.27,6.96 12,12.01 20.73,6.96" stroke="currentColor" stroke-width="2"/>
+                      <line x1="12" y1="22.08" x2="12" y2="12" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                  </div>
+                  <span class="stat-label">Packages</span>
+                </div>
+                <div class="stat-number" id="packageCount">-</div>
+              </div>
             </div>
           </div>
         </div>
 
+        <!-- Coverage Section -->
         <div class="coverage-section">
-          <h3 class="section-title">Coverage Analysis <span class="tooltip-icon" title="This shows the ratio of MUI components to custom-built components on the page.">?</span></h3>
-          <div class="coverage-bar">
-            <div class="coverage-mui" id="coverageBarMui" style="width: 0%;"></div>
-            <div class="coverage-custom" id="coverageBarCustom" style="width: 0%;"></div>
+          <div class="section-header">
+            <h3 class="section-title">Coverage Analysis</h3>
+            <div class="tooltip-trigger" title="This shows the ratio of MUI components to custom-built components on the page.">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                <path d="m9,12a3,3 0 1,0 6,0a3,3 0 1,0 -6,0" stroke="currentColor" stroke-width="2"/>
+                <path d="M9,9v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M12,18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
           </div>
-          <div class="coverage-legend">
-            <div class="legend-item mui"><span id="muiPercentage">0%</span> MUI</div>
-            <div class="legend-item custom"><span id="customPercentage">0%</span> Custom</div>
+          
+          <div class="coverage-bar-container">
+            <div class="coverage-bar">
+              <div class="coverage-segment mui" id="coverageBarMui" style="width: 0%;"></div>
+              <div class="coverage-segment custom" id="coverageBarCustom" style="width: 0%;"></div>
+            </div>
+            <div class="coverage-legend">
+              <div class="legend-item">
+                <div class="legend-dot mui"></div>
+                <span id="muiPercentage">0%</span>
+                <span class="legend-label">MUI</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-dot custom"></div>
+                <span id="customPercentage">0%</span>
+                <span class="legend-label">Custom</span>
+              </div>
+            </div>
           </div>
         </div>
 
+        <!-- Insights Section -->
         <div class="insights-section">
-          <h3 class="section-title">Insights</h3>
+          <div class="section-header">
+            <h3 class="section-title">Insights</h3>
+          </div>
           <div class="insight-cards" id="insightCards">
-            <div class="insight-card">Click "Analyze Page" to see insights.</div>
+            <div class="insight-card">
+              <div class="insight-content">
+                <div class="insight-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c1.34 0 2.61.29 3.76.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                </div>
+                <span>Click "Analyze Page" to see insights.</span>
+              </div>
+            </div>
           </div>
         </div>
 
+        <!-- Tabs Section -->
         <div class="tabs-section">
-          <div class="tab-list">
-            <button class="tab-button active" data-tab="components">Components</button>
-            <button class="tab-button" data-tab="packages">Packages</button>
-            <button class="tab-button" data-tab="debug">Debug</button>
+          <div class="tabs-container">
+            <div class="tab-list">
+              <button class="tab-trigger active" data-tab="components">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
+                  <line x1="9" y1="9" x2="15" y2="9" stroke="currentColor" stroke-width="2"/>
+                  <line x1="9" y1="15" x2="15" y2="15" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                Components
+              </button>
+              <button class="tab-trigger" data-tab="packages">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                Packages
+              </button>
+              <button class="tab-trigger" data-tab="debug">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                  <path d="m12 1 4 4-4 4-4-4 4-4z" stroke="currentColor" stroke-width="2"/>
+                  <path d="m12 15 4 4-4 4-4-4 4-4z" stroke="currentColor" stroke-width="2"/>
+                  <path d="m19 12-4 4-4-4 4-4z" stroke="currentColor" stroke-width="2"/>
+                  <path d="m5 12-4 4-4-4 4-4z" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                Debug
+              </button>
+            </div>
           </div>
+          
           <div class="tab-content active" id="components-tab">
-            <div class="component-grid" id="componentGrid">
-              <!-- Component cards will be injected here -->
+            <div class="content-container">
+              <div class="component-grid" id="componentGrid">
+                <!-- Component cards will be injected here -->
+              </div>
             </div>
           </div>
+          
           <div class="tab-content" id="packages-tab">
-            <div class="package-grid" id="packageGrid">
-              <!-- Package cards will be injected here -->
+            <div class="content-container">
+              <div class="package-grid" id="packageGrid">
+                <!-- Package cards will be injected here -->
+              </div>
             </div>
           </div>
+          
           <div class="tab-content" id="debug-tab">
-            <div class="debug-output" id="debugOutput">
-              <div class="debug-entry">Debug logs will appear here when enabled.</div>
+            <div class="content-container">
+              <div class="debug-output" id="debugOutput">
+                <div class="debug-entry">
+                  <span class="debug-label">INFO</span>
+                  <span class="debug-message">Debug logs will appear here when enabled.</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

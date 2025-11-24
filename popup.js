@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     });
 
-    document.querySelectorAll('.tab-button').forEach(function(button) {
+    document.querySelectorAll('.tab-trigger').forEach(function(button) {
       button.addEventListener('click', function() {
         switchTab(button.dataset.tab);
       });
@@ -47,8 +47,9 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  function switchTab(tabName) {
-    document.querySelectorAll('.tab-button').forEach(function(btn) {
+function switchTab(tabName) {
+    // Update tab triggers
+    document.querySelectorAll('.tab-trigger').forEach(function(btn) {
       if (btn.dataset.tab === tabName) {
         btn.classList.add('active');
       } else {
@@ -56,6 +57,7 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     });
 
+    // Update tab content
     document.querySelectorAll('.tab-content').forEach(function(content) {
       if (content.id === tabName + '-tab') {
         content.classList.add('active');

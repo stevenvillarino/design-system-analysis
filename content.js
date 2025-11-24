@@ -7,87 +7,197 @@ let packageCache = null;
 let packageCacheTime = 0;
 
 function detectAllPackages() {
-  // Return cached result if less than 30 seconds old
+  // Return cached result if less than 10 seconds old (reduced from 30)
   const now = Date.now();
-  if (packageCache && (now - packageCacheTime) < 30000) {
+  if (packageCache && (now - packageCacheTime) < 10000) {
     return packageCache;
   }
   
   const packages = new Map();
   
+  console.log('[DSA-DEBUG] Starting package detection...');
+  
   // Enhanced script tag checking with focus on MUI and Roku Design System
-  const scripts = Array.from(document.querySelectorAll('script[src]')).slice(0, 100);
-  const muiEcosystemPatterns = [
-    // Roku Design System packages
-    { pattern: /@roku-web-ui\/rds-components(?:@|\/)([\d\w\.-]+)/, name: '@roku-web-ui/rds-components', version: 1, category: 'Roku RDS' },
-    { pattern: /@roku-web-ui\/rds-theme(?:@|\/)([\d\w\.-]+)/, name: '@roku-web-ui/rds-theme', version: 1, category: 'Roku RDS' },
-    { pattern: /@roku-web-ui\/rds-icons(?:@|\/)([\d\w\.-]+)/, name: '@roku-web-ui/rds-icons', version: 1, category: 'Roku RDS' },
-    { pattern: /@roku-web-ui\/rds-fonts(?:@|\/)([\d\w\.-]+)/, name: '@roku-web-ui/rds-fonts', version: 1, category: 'Roku RDS' },
-    { pattern: /@roku-web-ui\/rds-storybook(?:@|\/)([\d\w\.-]+)/, name: '@roku-web-ui/rds-storybook', version: 1, category: 'Roku RDS' },
+  const scripts = Array.from(document.querySelectorAll('script[src]')).slice(0, 200);
+  console.log('[DSA-DEBUG] Found', scripts.length, 'script tags');
+  
+  // More flexible pattern matching for modern bundlers
+  const packagePatterns = [
+    // Roku Design System packages (more flexible patterns)
+    {
+      patterns: [
+        /@roku-web-ui\/rds-components/i,
+        /@roku-web-ui\/rds-theme/i,
+        /@roku-web-ui\/rds-icons/i,
+        /@roku-web-ui\/rds-fonts/i
+      ],
+      name: '@roku-web-ui/rds-components',
+      category: 'Roku RDS',
+      source: 'roku-design-system'
+    },
     
-    // MUI Core packages
-    { pattern: /@mui\/material(?:@|\/)([\d\w\.-]+)/, name: '@mui/material', version: 1, category: 'MUI Core' },
-    { pattern: /@mui\/system(?:@|\/)([\d\w\.-]+)/, name: '@mui/system', version: 1, category: 'MUI Core' },
-    { pattern: /@mui\/utils(?:@|\/)([\d\w\.-]+)/, name: '@mui/utils', version: 1, category: 'MUI Core' },
-    { pattern: /@mui\/base(?:@|\/)([\d\w\.-]+)/, name: '@mui/base', version: 1, category: 'MUI Core' },
-    { pattern: /@mui\/lab(?:@|\/)([\d\w\.-]+)/, name: '@mui/lab', version: 1, category: 'MUI Labs' },
+    // MUI Core packages (more flexible)
+    {
+      patterns: [/@mui\/material/i, /mui\.material/i],
+      name: '@mui/material',
+      category: 'MUI Core',
+      source: 'mui-core'
+    },
+    {
+      patterns: [/@mui\/system/i, /mui\.system/i],
+      name: '@mui/system',
+      category: 'MUI Core',
+      source: 'mui-system'
+    },
+    {
+      patterns: [/@mui\/utils/i],
+      name: '@mui/utils',
+      category: 'MUI Core',
+      source: 'mui-utils'
+    },
+    {
+      patterns: [/@mui\/base/i],
+      name: '@mui/base',
+      category: 'MUI Core',
+      source: 'mui-base'
+    },
+    {
+      patterns: [/@mui\/lab/i],
+      name: '@mui/lab',
+      category: 'MUI Labs',
+      source: 'mui-lab'
+    },
     
     // MUI Styling and Theming
-    { pattern: /@mui\/styles(?:@|\/)([\d\w\.-]+)/, name: '@mui/styles', version: 1, category: 'MUI Styling' },
-    { pattern: /@emotion\/react(?:@|\/)([\d\w\.-]+)/, name: '@emotion/react', version: 1, category: 'MUI Styling' },
-    { pattern: /@emotion\/styled(?:@|\/)([\d\w\.-]+)/, name: '@emotion/styled', version: 1, category: 'MUI Styling' },
-    { pattern: /@emotion\/cache(?:@|\/)([\d\w\.-]+)/, name: '@emotion/cache', version: 1, category: 'MUI Styling' },
+    {
+      patterns: [/@mui\/styles/i],
+      name: '@mui/styles',
+      category: 'MUI Styling',
+      source: 'mui-styles'
+    },
+    {
+      patterns: [/@emotion\/react/i],
+      name: '@emotion/react',
+      category: 'MUI Styling',
+      source: 'emotion-react'
+    },
+    {
+      patterns: [/@emotion\/styled/i],
+      name: '@emotion/styled',
+      category: 'MUI Styling',
+      source: 'emotion-styled'
+    },
+    {
+      patterns: [/@emotion\/cache/i],
+      name: '@emotion/cache',
+      category: 'MUI Styling',
+      source: 'emotion-cache'
+    },
     
     // MUI Icons and Fonts
-    { pattern: /@mui\/icons-material(?:@|\/)([\d\w\.-]+)/, name: '@mui/icons-material', version: 1, category: 'MUI Icons' },
-    { pattern: /material-icons(?:@|\/)([\d\w\.-]+)/, name: 'material-icons', version: 1, category: 'MUI Icons' },
-    { pattern: /roboto-fontface(?:@|\/)([\d\w\.-]+)/, name: 'roboto-fontface', version: 1, category: 'MUI Fonts' },
-    { pattern: /typeface-roboto(?:@|\/)([\d\w\.-]+)/, name: 'typeface-roboto', version: 1, category: 'MUI Fonts' },
+    {
+      patterns: [/@mui\/icons-material/i],
+      name: '@mui/icons-material',
+      category: 'MUI Icons',
+      source: 'mui-icons'
+    },
+    {
+      patterns: [/material-icons/i],
+      name: 'material-icons',
+      category: 'MUI Icons',
+      source: 'material-icons'
+    },
+    {
+      patterns: [/roboto-fontface/i, /typeface-roboto/i],
+      name: 'roboto-font',
+      category: 'MUI Fonts',
+      source: 'roboto-font'
+    },
     
     // MUI Advanced/Professional
-    { pattern: /@mui\/x-data-grid(?:@|\/)([\d\w\.-]+)/, name: '@mui/x-data-grid', version: 1, category: 'MUI X' },
-    { pattern: /@mui\/x-date-pickers(?:@|\/)([\d\w\.-]+)/, name: '@mui/x-date-pickers', version: 1, category: 'MUI X' },
-    { pattern: /@mui\/x-charts(?:@|\/)([\d\w\.-]+)/, name: '@mui/x-charts', version: 1, category: 'MUI X' },
+    {
+      patterns: [/@mui\/x-/i],
+      name: '@mui/x-libraries',
+      category: 'MUI X',
+      source: 'mui-x'
+    },
     
-    // Design System & Development Tools
-    { pattern: /storybook(?:@|\/)([\d\w\.-]+)/, name: 'storybook', version: 1, category: 'Development Tools' },
-    { pattern: /@storybook\/([^@\/]+)(?:@|\/)([\d\w\.-]+)/, name: 1, version: 2, prefix: '@storybook', category: 'Development Tools' },
-    { pattern: /chromatic(?:@|\/)([\d\w\.-]+)/, name: 'chromatic', version: 1, category: 'Development Tools' },
+    // React and ecosystem
+    {
+      patterns: [/react(\.min)?\.js/i, /react\.production\.js/i],
+      name: 'react',
+      category: 'Framework',
+      source: 'react-core'
+    },
+    {
+      patterns: [/react-dom(\.min)?\.js/i, /react-dom\.production\.js/i],
+      name: 'react-dom',
+      category: 'Framework',
+      source: 'react-dom'
+    },
     
     // Other Design Systems
-    { pattern: /react(?:@|\/)([\d\w\.-]+)/, name: 'react', version: 1, category: 'Framework' },
-    { pattern: /bootstrap(?:@|\/)([\d\w\.-]+)/, name: 'bootstrap', version: 1, category: 'CSS Framework' },
-    { pattern: /tailwindcss(?:@|\/)([\d\w\.-]+)/, name: 'tailwindcss', version: 1, category: 'CSS Framework' },
+    {
+      patterns: [/bootstrap(\.min)?\.js/i],
+      name: 'bootstrap',
+      category: 'CSS Framework',
+      source: 'bootstrap'
+    },
+    {
+      patterns: [/tailwindcss/i],
+      name: 'tailwindcss',
+      category: 'CSS Framework',
+      source: 'tailwindcss'
+    },
     
     // CDN patterns
-    { pattern: /cdn\.jsdelivr\.net\/npm\/([^@\/]+)@([^/]+)/, name: 1, version: 2, category: 'CDN Package' },
-    { pattern: /unpkg\.com\/([^@\/]+)@([^/]+)/, name: 1, version: 2, category: 'CDN Package' }
+    {
+      patterns: [/cdn\.jsdelivr\.net\/npm\//i],
+      name: 'cdn-jsdelivr',
+      category: 'CDN',
+      source: 'cdn-jsdelivr'
+    },
+    {
+      patterns: [/unpkg\.com\//i],
+      name: 'unpkg-cdn',
+      category: 'CDN',
+      source: 'unpkg'
+    }
   ];
   
-  scripts.forEach(script => {
+  let foundPackages = 0;
+  scripts.forEach((script, index) => {
     const src = script.src;
-    for (const { pattern, name, version, prefix, category } of muiEcosystemPatterns) {
-      const match = src.match(pattern);
-      if (match) {
-        const packageName = typeof name === 'string' ? name : (prefix ? `${prefix}/${match[name]}` : match[name]);
-        const packageVersion = match[version] || 'detected';
-        
+    if (!src) return;
+    
+    for (const pattern of packagePatterns) {
+      if (pattern.patterns.some(p => p.test(src))) {
+        const packageName = pattern.name;
         if (!packages.has(packageName)) {
+          // Extract version from URL if possible
+          const versionMatch = src.match(/@?([\w\-\.]+)@?([\d\w\.\-]+)?/);
+          const version = versionMatch ? versionMatch[2] || 'detected' : 'detected';
+          
           packages.set(packageName, {
             name: packageName,
-            version: packageVersion,
+            version: version,
             source: 'script-tag',
-            category: category || 'Unknown',
-            url: src
+            category: pattern.category,
+            url: src,
+            scriptIndex: index
           });
+          foundPackages++;
+          console.log('[DSA-DEBUG] Found package in script:', packageName, 'from', src);
+          break; // Only add each package once
         }
-        break;
       }
     }
   });
   
+  console.log('[DSA-DEBUG] Found', foundPackages, 'packages from script tags');
+  
   // Enhanced global object detection for MUI ecosystem
-  const muiGlobalChecks = [
+  const globalChecks = [
     // MUI globals
     { global: 'MaterialUI', name: '@mui/material', version: () => window.MaterialUI?.version, category: 'MUI Core' },
     { global: 'MUI', name: '@mui/material', version: () => window.MUI?.version, category: 'MUI Core' },
@@ -106,10 +216,15 @@ function detectAllPackages() {
     
     // Other frameworks
     { global: 'bootstrap', name: 'bootstrap', version: () => window.bootstrap?.Tooltip?.VERSION, category: 'CSS Framework' },
-    { global: 'jQuery', name: 'jquery', version: () => window.jQuery?.fn?.jquery, category: 'Library' }
+    { global: 'jQuery', name: 'jquery', version: () => window.jQuery?.fn?.jquery, category: 'Library' },
+    
+    // Additional global checks
+    { global: '__REACT_DEVTOOLS_GLOBAL_HOOK__', name: 'react-devtools', version: 'detected', category: 'Development Tools' },
+    { global: '__APOLLO_DEVTOOLS__', name: 'apollo-client', version: 'detected', category: 'Library' }
   ];
   
-  muiGlobalChecks.forEach(({ global, name, version, category }) => {
+  let foundGlobals = 0;
+  globalChecks.forEach(({ global, name, version, category }) => {
     if (window[global] && !packages.has(name)) {
       const versionString = typeof version === 'function' ? version() : version;
       packages.set(name, {
@@ -119,11 +234,15 @@ function detectAllPackages() {
         category: category || 'Unknown',
         url: null
       });
+      foundGlobals++;
+      console.log('[DSA-DEBUG] Found package via global object:', name, versionString);
     }
   });
   
+  console.log('[DSA-DEBUG] Found', foundGlobals, 'packages from global objects');
+  
   // CSS and font detection for MUI ecosystem
-  const muiCssChecks = [
+  const cssChecks = [
     // MUI theme detection through CSS variables
     { selector: '[data-mui-theme]', name: '@mui/material-theme', category: 'MUI Theming' },
     { selector: '.MuiCssBaseline-root', name: '@mui/material-baseline', category: 'MUI Core' },
@@ -137,10 +256,16 @@ function detectAllPackages() {
     
     // Other CSS frameworks
     { selector: '.container, .btn', name: 'bootstrap', category: 'CSS Framework' },
-    { selector: '.flex, .grid', name: 'tailwindcss', category: 'CSS Framework' }
+    { selector: '.flex, .grid', name: 'tailwindcss', category: 'CSS Framework' },
+    
+    // Additional CSS-based detection
+    { selector: '[class*="Mui"]', name: 'mui-styles', category: 'MUI Core' },
+    { selector: '[class*="ant-"]', name: 'ant-design', category: 'UI Framework' },
+    { selector: '[class*="chakra-"]', name: 'chakra-ui', category: 'UI Framework' }
   ];
   
-  muiCssChecks.forEach(({ selector, name, category }) => {
+  let foundCss = 0;
+  cssChecks.forEach(({ selector, name, category }) => {
     if (!packages.has(name) && document.querySelector(selector)) {
       packages.set(name, {
         name,
@@ -149,8 +274,12 @@ function detectAllPackages() {
         category: category || 'Unknown',
         url: null
       });
+      foundCss++;
+      console.log('[DSA-DEBUG] Found package via CSS selector:', name);
     }
   });
+  
+  console.log('[DSA-DEBUG] Found', foundCss, 'packages from CSS detection');
   
   // Check for MUI theme configuration in DOM
   const themeDetection = detectMUITheme();
@@ -163,11 +292,36 @@ function detectAllPackages() {
       details: themeDetection,
       url: null
     });
+    console.log('[DSA-DEBUG] Found custom MUI theme');
   }
   
-  packageCache = Array.from(packages.values());
+  // Check for common framework indicators
+  const frameworkIndicators = [
+    { name: 'webpack', indicator: () => window.webpackJsonp || window.__webpack_require__, category: 'Build Tool' },
+    { name: 'typescript', indicator: () => window.ts, category: 'Language' },
+    { name: 'lodash', indicator: () => window._ && window._.version, category: 'Utility' },
+    { name: 'moment', indicator: () => window.moment, category: 'Utility' }
+  ];
+  
+  frameworkIndicators.forEach(({ name, indicator, category }) => {
+    if (indicator() && !packages.has(name)) {
+      packages.set(name, {
+        name,
+        version: typeof indicator() === 'object' ? indicator()?.version || 'detected' : 'detected',
+        source: 'framework-detection',
+        category: category || 'Framework',
+        url: null
+      });
+      console.log('[DSA-DEBUG] Found framework:', name);
+    }
+  });
+  
+  const result = Array.from(packages.values());
+  console.log('[DSA-DEBUG] Total packages detected:', result.length);
+  
+  packageCache = result;
   packageCacheTime = now;
-  return packageCache;
+  return result;
 }
 
 // Detect MUI theme configuration and customization
