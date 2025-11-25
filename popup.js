@@ -86,7 +86,6 @@ function switchTab(tabName) {
       }
 
       const tab = tabs[0];
-      console.log('Attempting to analyze tab:', tab.url);
 
       // Check if we can inject on this URL
       if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:')) {
@@ -97,39 +96,33 @@ function switchTab(tabName) {
       // First try to ping the content script to see if it's already there
       chrome.tabs.sendMessage(tab.id, {action: "ping"}, function(pingResponse) {
         if (chrome.runtime.lastError || !pingResponse) {
-          console.log('Content script not found, injecting...');
           // Inject content script
           chrome.scripting.executeScript({
             target: { tabId: tab.id },
             files: ['content.js']
           }, function(injectionResults) {
             if (chrome.runtime.lastError) {
-              console.error('Injection failed:', chrome.runtime.lastError.message);
               handleAnalysisError(new Error('Cannot inject content script: ' + chrome.runtime.lastError.message));
               isAnalyzing = false;
               return;
             }
-            
-            console.log('Content script injected, waiting...');
-            // Wait longer and try multiple times
+
+            // Wait and retry multiple times
             let attempts = 0;
             const maxAttempts = 5;
-            
+
             function tryAnalysis() {
               attempts++;
-              console.log(`Analysis attempt ${attempts}/${maxAttempts}`);
-              
+
               chrome.tabs.sendMessage(tab.id, {action: "getMUIData"}, function(response) {
                 if (chrome.runtime.lastError) {
-                  console.error(`Attempt ${attempts} failed:`, chrome.runtime.lastError.message);
                   if (attempts < maxAttempts) {
-                    setTimeout(tryAnalysis, 1000); // Wait 1 second between attempts
+                    setTimeout(tryAnalysis, 1000);
                   } else {
-                    handleAnalysisError(new Error('Content script not responding after ' + maxAttempts + ' attempts: ' + chrome.runtime.lastError.message));
+                    handleAnalysisError(new Error('Content script not responding after ' + maxAttempts + ' attempts'));
                     isAnalyzing = false;
                   }
                 } else if (response) {
-                  console.log('Analysis response received:', response);
                   if (response.error) {
                     handleAnalysisError(new Error(response.message || 'Content script error'));
                   } else {
@@ -137,7 +130,6 @@ function switchTab(tabName) {
                   }
                   isAnalyzing = false;
                 } else {
-                  console.log(`Attempt ${attempts}: No response from content script`);
                   if (attempts < maxAttempts) {
                     setTimeout(tryAnalysis, 1000);
                   } else {
@@ -147,19 +139,16 @@ function switchTab(tabName) {
                 }
               });
             }
-            
+
             // Start first attempt after injection
             setTimeout(tryAnalysis, 1000);
           });
         } else {
-          console.log('Content script already present, requesting analysis...');
           // Content script is already there, request analysis directly
           chrome.tabs.sendMessage(tab.id, {action: "getMUIData"}, function(response) {
             if (chrome.runtime.lastError) {
-              console.error('Analysis request failed:', chrome.runtime.lastError.message);
               handleAnalysisError(new Error('Content script error: ' + chrome.runtime.lastError.message));
             } else if (response) {
-              console.log('Analysis response received:', response);
               if (response.error) {
                 handleAnalysisError(new Error(response.message || 'Content script error'));
               } else {
@@ -176,12 +165,6 @@ function switchTab(tabName) {
   }
 
   function handleAnalysisComplete(data) {
-    console.log('Analysis data received:', data);
-    console.log('MUI detected:', data.muiDetected);
-    console.log('Total MUI components:', data.totalMuiComponents);
-    console.log('Custom components:', data.customComponentCount);
-    console.log('Package count:', data.detectedPackages);
-    
     analysisData = data;
     hideLoading();
     updateStatsCards(data);
@@ -265,27 +248,15 @@ function switchTab(tabName) {
 
   function populateComponentsTab() {
     const grid = document.getElementById('componentGrid');
-    console.log('Populating components tab:', {
-      grid: !!grid,
-      muiComponentDetails: analysisData?.muiComponentDetails,
-      analysisData: analysisData
-    });
-    
-    if (!grid) {
-      console.error('Component grid element not found');
-      return;
-    }
-    
+    if (!grid) return;
+
     if (!analysisData || !analysisData.muiComponentDetails) {
-      console.log('No MUI component details available');
       grid.innerHTML = '<div class="component-card"><div class="card-header"><div class="card-title">No components detected</div></div></div>';
       return;
     }
 
     const components = Object.entries(analysisData.muiComponentDetails)
       .sort(function(a, b) { return b[1] - a[1]; });
-
-    console.log('Components found:', components);
 
     let html = '';
     components.forEach(function(component) {
@@ -305,24 +276,12 @@ function switchTab(tabName) {
 
   function populatePackagesTab() {
     const grid = document.getElementById('packageGrid');
-    console.log('Populating packages tab:', {
-      grid: !!grid,
-      packageDependencies: analysisData?.packageDependencies,
-      analysisData: analysisData
-    });
-    
-    if (!grid) {
-      console.error('Package grid element not found');
-      return;
-    }
-    
+    if (!grid) return;
+
     if (!analysisData || !analysisData.packageDependencies || analysisData.packageDependencies.length === 0) {
-      console.log('No package dependencies available');
       grid.innerHTML = '<div class="package-card"><div class="card-header"><div class="card-title">No packages detected</div></div></div>';
       return;
     }
-
-    console.log('Packages found:', analysisData.packageDependencies);
 
     let html = '';
     analysisData.packageDependencies.forEach(function(pkg) {
@@ -362,9 +321,7 @@ function switchTab(tabName) {
   function generateInsights(data) {
     const insights = [];
     const total = (data.totalMuiComponents || 0) + (data.customComponentCount || 0);
-    
-    console.log('Generating insights with data:', data);
-    
+
     if (total === 0) {
       if (data.muiDetected) {
         insights.push({
@@ -427,15 +384,9 @@ function switchTab(tabName) {
 
     chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
       if (tabs.length > 0) {
-        chrome.tabs.sendMessage(tabs[0].id, { 
-          action: "toggleOverlays", 
-          options: options 
-        }, function(response) {
-          if (chrome.runtime.lastError) {
-            console.log('Overlay toggle failed:', chrome.runtime.lastError.message);
-          } else {
-            console.log('Overlay toggle response:', response);
-          }
+        chrome.tabs.sendMessage(tabs[0].id, {
+          action: "toggleOverlays",
+          options: options
         });
       }
     });

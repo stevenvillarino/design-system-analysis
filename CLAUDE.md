@@ -19,9 +19,9 @@ This is a Chrome extension that analyzes web pages to identify design system com
 ## Technology Stack
 
 - **Platform**: Chrome Extension (Manifest V3)
-- **Frontend**: Vanilla JavaScript, HTML, CSS
-- **Visualization**: Mermaid.js for component hierarchy diagrams
-- **Content Security Policy**: Allows scripts from cdn.jsdelivr.net for Mermaid.js
+- **Frontend**: Vanilla JavaScript, HTML, CSS (shadcn-inspired styling)
+- **Visualization**: Mermaid.js for component hierarchy diagrams (bundled locally)
+- **Content Security Policy**: Strict policy with local scripts only
 
 ## Development Commands
 
@@ -57,8 +57,9 @@ This extension doesn't use a build system - it's vanilla JavaScript and can be l
 
 **MUI Component Detection:**
 - Looks for `MuiButton-root`, `MuiTypography-root`, etc. class patterns
-- Supports 30+ MUI components including Button, Card, TextField, etc.
+- Supports 80+ MUI components including Button, Card, TextField, etc.
 - Handles both v4 and v5 MUI class naming conventions
+- Fallback detection via Emotion CSS classes for bundled apps
 
 **Custom Component Detection:**
 - Identifies PascalCase class names (likely React components)
@@ -114,15 +115,30 @@ This extension doesn't use a build system - it's vanilla JavaScript and can be l
 ## Browser Extension Considerations
 
 - **Manifest V3 compliance** with service worker restrictions
-- **Content Security Policy** configured for Mermaid.js CDN
+- **Content Security Policy** strict local-only scripts (Mermaid.js bundled)
 - **Cross-origin permissions** for analyzing any website
 - **Error handling** for sites that block content scripts
 - **Performance optimization** for large DOM trees
+- **Package cache** with 10-second TTL for performance
+
+## Package Detection
+
+The extension detects packages from multiple sources:
+
+- **Script tag analysis** for CDN-loaded packages
+- **Emotion/styled-components detection** for bundled MUI apps
+- **DOM class pattern matching** for framework identification
+
+Supported package categories:
+
+- Roku Design System (@roku-web-ui/rds-*)
+- MUI Core, Styling, Icons, X libraries
+- React ecosystem
+- CSS frameworks (Bootstrap, Tailwind)
 
 ## Future Enhancement Areas
 
-- Component navigation panel (mentioned in README)
+- Component navigation panel
 - Design token detection and analysis
-- Package dependency analysis
 - Support for other design systems (Ant Design, Chakra UI, etc.)
 - Export functionality for analysis results

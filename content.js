@@ -6,16 +6,19 @@ console.log('[DSA] Design System Analyzer content script loaded at:', new Date()
 let packageCache = null;
 let packageCacheTime = 0;
 
-function detectAllPackages() {
+function detectAllPackages(forceRefresh = false) {
   // Return cached result if less than 10 seconds old (reduced from 30)
   const now = Date.now();
-  if (packageCache && (now - packageCacheTime) < 10000) {
+  if (!forceRefresh && packageCache && (now - packageCacheTime) < 10000) {
+    console.log('[DSA-DEBUG] Returning cached packages:', packageCache.length);
     return packageCache;
   }
-  
+
+  // Clear cache for fresh detection
+  packageCache = null;
   const packages = new Map();
-  
-  console.log('[DSA-DEBUG] Starting package detection...');
+
+  console.log('[DSA-DEBUG] Starting package detection (forceRefresh:', forceRefresh, ')...');
   
   // Enhanced script tag checking with focus on MUI and Roku Design System
   const scripts = Array.from(document.querySelectorAll('script[src]')).slice(0, 200);
@@ -243,30 +246,41 @@ function detectAllPackages() {
   
   // CSS and font detection for MUI ecosystem
   const cssChecks = [
+    // Emotion detection (MUI's styling solution) - key indicator for bundled MUI apps
+    { selector: 'meta[name="emotion-insertion-point"]', name: '@emotion/react', category: 'MUI Styling' },
+    { selector: 'style[data-emotion]', name: '@emotion/css', category: 'MUI Styling' },
+
     // MUI theme detection through CSS variables
     { selector: '[data-mui-theme]', name: '@mui/material-theme', category: 'MUI Theming' },
     { selector: '.MuiCssBaseline-root', name: '@mui/material-baseline', category: 'MUI Core' },
-    
+
     // Material Icons detection
     { selector: '.material-icons, .material-icons-outlined, .material-icons-round', name: 'material-icons', category: 'MUI Icons' },
-    
+
     // Font detection
     { selector: 'link[href*="fonts.googleapis.com/css"][href*="Roboto"]', name: 'roboto-font', category: 'MUI Fonts' },
     { selector: 'link[href*="fonts.googleapis.com/icon"][href*="Material+Icons"]', name: 'material-icons-font', category: 'MUI Icons' },
-    
+
+    // MUI component detection (more specific selectors)
+    { selector: '[class*="MuiButton"]', name: '@mui/material', category: 'MUI Core' },
+    { selector: '[class*="MuiTypography"]', name: '@mui/material', category: 'MUI Core' },
+    { selector: '[class*="MuiPaper"]', name: '@mui/material', category: 'MUI Core' },
+    { selector: '[class*="MuiBox"]', name: '@mui/material', category: 'MUI Core' },
+
     // Other CSS frameworks
-    { selector: '.container, .btn', name: 'bootstrap', category: 'CSS Framework' },
-    { selector: '.flex, .grid', name: 'tailwindcss', category: 'CSS Framework' },
-    
-    // Additional CSS-based detection
-    { selector: '[class*="Mui"]', name: 'mui-styles', category: 'MUI Core' },
+    { selector: 'link[href*="bootstrap"]', name: 'bootstrap', category: 'CSS Framework' },
+    { selector: '[class*="tailwind"], [class*="tw-"]', name: 'tailwindcss', category: 'CSS Framework' },
+
+    // Additional UI framework detection
     { selector: '[class*="ant-"]', name: 'ant-design', category: 'UI Framework' },
     { selector: '[class*="chakra-"]', name: 'chakra-ui', category: 'UI Framework' }
   ];
   
   let foundCss = 0;
   cssChecks.forEach(({ selector, name, category }) => {
-    if (!packages.has(name) && document.querySelector(selector)) {
+    const element = document.querySelector(selector);
+    console.log('[DSA-DEBUG] CSS check:', selector, '-> found:', !!element, 'already has:', packages.has(name));
+    if (!packages.has(name) && element) {
       packages.set(name, {
         name,
         version: 'detected',
@@ -278,8 +292,21 @@ function detectAllPackages() {
       console.log('[DSA-DEBUG] Found package via CSS selector:', name);
     }
   });
-  
+
   console.log('[DSA-DEBUG] Found', foundCss, 'packages from CSS detection');
+
+  // If MUI components are detected but no packages found yet, add MUI explicitly
+  const muiElements = document.querySelectorAll('[class*="Mui"]');
+  if (muiElements.length > 0 && !packages.has('@mui/material')) {
+    packages.set('@mui/material', {
+      name: '@mui/material',
+      version: 'detected',
+      source: 'component-detection',
+      category: 'MUI Core',
+      url: null
+    });
+    console.log('[DSA-DEBUG] Added @mui/material based on', muiElements.length, 'MUI elements found');
+  }
   
   // Check for MUI theme configuration in DOM
   const themeDetection = detectMUITheme();
@@ -948,7 +975,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const detectionData = detectMUI();
         if (debugMode) console.log('[DSA-DEBUG] MUI detection complete:', detectionData);
         
-        const allPackages = detectAllPackages();
+        const allPackages = detectAllPackages(true); // Force refresh for accurate detection
         if (debugMode) console.log('[DSA-DEBUG] Package detection complete:', allPackages.length, 'packages found');
         
         let analysisData = {
